@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useState, useEffect} from 'react';
+import React, {createContext, useContext, useEffect, useState} from 'react';
 import {MMKV} from 'react-native-mmkv';
 import {Alert} from 'react-native';
 import * as RNFS from 'react-native-fs';
@@ -16,8 +16,8 @@ interface ModelContext {
     availableModels: LlamaModel[];
     selectedModel: LlamaModel | null;
     isModelLoaded: boolean;
-    loadModel: (modelPath: string) => Promise<void>;
-    generateResponse: (messages: any[]) => Promise<string>;
+    loadModel: (models:LlamaModel[], modelPath: string) => Promise<void>;
+    generateResponse: (messages: any[], onToken: (token: string) => void, abortSignal?: AbortController) => Promise<string>;
     downloadModel: (url: string, modelName: string) => Promise<void>;
     modelInfo: any | null;
 }
@@ -34,11 +34,36 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [modelInfo, setModelInfo] = useState<any | null>(null);
 
-    // 常用停止词
+    // 按模型类型的常用停止词
     const stopWords = [
-        '</s>', '<|end|>', '<|eot_id|>', '<|end_of_text|>',
-        '<|im_end|>', '<|EOT|>', '<|END_OF_TURN_TOKEN|>',
-        '<|end_of_turn|>', '<|endoftext|>'
+        // 通用停止词
+        '</s>',
+        '<|end|>',
+        '<|eot_id|>',
+        '<|end_of_text|>',
+        '<|im_end|>',
+        '<|EOT|>',
+        '<|END_OF_TURN_TOKEN|>',
+        '<|end_of_turn|>',
+        '<|endoftext|>',
+
+        // Llama专用停止词
+        '[INST]',
+        '[/INST]',
+        '<|assistant|>',
+        '<|user|>',
+        '<|system|>',
+        '<|im_start|>',
+
+        // Phi专用停止词
+        'Instruct:',
+        'Output:',
+        '### Human:',
+        '### Assistant:',
+
+        // Gemma专用停止词
+        '<end_of_turn>',
+        '<start_of_turn>'
     ];
 
     // 初始化时检查已有模型
@@ -67,10 +92,11 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
 
                 // 检查是否有上次使用的模型
                 const lastModelPath = storage.getString('lastModelPath');
+                console.log('lastModelPath', lastModelPath);
                 if (lastModelPath) {
                     const lastModel = models.find(model => model.path === lastModelPath);
                     if (lastModel) {
-                        await loadModel(lastModel.path);
+                        await loadModel(models, lastModel.path);
                     }
                 }
             } catch (error) {
@@ -93,7 +119,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         }
     };
 
-    const loadModel = async (modelPath: string) => {
+    const loadModel = async (models: LlamaModel[], modelPath: string) => {
         try {
             setIsModelLoaded(false);
 
@@ -118,7 +144,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
             setModelContext(context);
 
             // 找到对应的模型数据并设置为当前模型
-            const model = availableModels.find(m => m.path === modelPath) || {
+            const model = models.find(m => m.path === modelPath) || {
                 name: 'Unknown Model',
                 path: modelPath
             };
@@ -132,7 +158,10 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         }
     };
 
-    const generateResponse = async (messages: any[]): Promise<string> => {
+    const generateResponse = async (
+        messages: any[],
+        onToken: (token: string) => void,
+        abortSignal?: AbortController): Promise<string> => {
         if (!modelContext || !isModelLoaded) {
             throw new Error('模型未加载');
         }
@@ -145,10 +174,17 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
                 top_p: 0.9,
                 n_predict: 1024,   // 最大生成令牌数
                 stop: stopWords,
-            }, (data) => {
+            }, async (data) => {
+                // 检查是否有取消信号
+                if (abortSignal?.signal.aborted) {
+                    // 中断生成
+                    await modelContext.stopCompletion()
+                    return;
+                }
                 // 实时获取生成的tokens，可用于流式显示
                 // 此处可以添加回调处理，用于实时更新UI
                 console.log('Token:', data.token);
+                onToken(data.token);
             });
 
             return result.text;

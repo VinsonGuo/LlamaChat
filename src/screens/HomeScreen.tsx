@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useState} from 'react';
 import {
     View,
     StyleSheet,
@@ -29,6 +29,19 @@ const HomeScreen = () => {
     const [currentEditChat, setCurrentEditChat] = useState<Chat | null>(null);
     const [editTitle, setEditTitle] = useState('');
 
+    useLayoutEffect(() => {
+        const navigateToSettings = () => {
+            console.log('test')
+        };
+        navigation.setOptions({
+            headerRight: () => (
+                <IconButton
+                    icon="cog"
+                    onPressOut={ ()=>navigation.navigate('ModelManagement') }
+                />
+            ),
+        });
+    }, [navigation]);
     // 加载聊天历史
     useEffect(() => {
         loadChats();
@@ -37,7 +50,6 @@ const HomeScreen = () => {
     const loadChats = () => {
         const history = getChatHistory();
         const chatList = Object.values(history.chats);
-        // 按更新时间降序排序
         chatList.sort((a, b) => b.updatedAt - a.updatedAt);
         setChats(chatList);
     };
@@ -126,16 +138,6 @@ const HomeScreen = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>LlamaChat</Text>
-                <Button
-                    mode="outlined"
-                    onPress={() => navigation.navigate('ModelManagement' as never)}
-                >
-                    模型管理
-                </Button>
-            </View>
-
             <View style={styles.modelInfo}>
                 <Text>当前模型: {selectedModel ? selectedModel.name : '无'}</Text>
                 <Text>状态: {isModelLoaded ? '已加载' : '未加载'}</Text>

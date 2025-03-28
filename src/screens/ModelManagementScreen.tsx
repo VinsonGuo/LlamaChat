@@ -1,22 +1,6 @@
 import React, {useState} from 'react';
-import {
-    View,
-    StyleSheet,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-} from 'react-native';
-import {
-    Button,
-    Text,
-    Card,
-    Divider,
-    TextInput,
-    List,
-    Dialog,
-    Portal,
-    Checkbox,
-} from 'react-native-paper';
+import {ActivityIndicator, Alert, ScrollView, StyleSheet, View,} from 'react-native';
+import {Button, Card, Dialog, Divider, List, Portal, Text, TextInput,} from 'react-native-paper';
 import {useModel} from '../context/ModelContext';
 
 // 预设模型列表
@@ -24,8 +8,8 @@ const PRESET_MODELS = [
     {
         name: 'TinyLlama-1.1B-Chat-v1.0',
         description: '轻量级聊天模型，适合移动设备',
-        url: 'https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0/resolve/main/ggml-model-q4_0.gguf',
-        size: '~600MB',
+        url: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
+        size: '~670MB',
     },
     {
         name: 'Phi-2-GGUF',
@@ -37,8 +21,33 @@ const PRESET_MODELS = [
         name: 'Llama-2-7B-Chat-GGUF',
         description: 'Meta 7B聊天模型',
         url: 'https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf',
-        size: '~4GB',
+        size: '~4.1GB',
     },
+    // 添加以下新模型
+    {
+        name: 'TinyLlama-1.1B-1T-OpenOrca',
+        description: '基于OpenOrca数据集训练的小型模型',
+        url: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-1T-OpenOrca-GGUF/resolve/main/tinyllama-1.1b-1t-openorca.Q4_K_M.gguf',
+        size: '~670MB',
+    },
+    {
+        name: 'Gemma-2B-GGUF',
+        description: 'Google开源小型模型',
+        url: 'https://huggingface.co/google/gemma-2b-GGUF/resolve/main/gemma-2b.Q4_K_M.gguf',
+        size: '~1.2GB',
+    },
+    {
+        name: 'Phi-2-DPO-GGUF',
+        description: '微软Phi-2的DPO增强版本',
+        url: 'https://huggingface.co/TheBloke/phi-2-dpo-GGUF/resolve/main/phi-2-dpo.Q4_K_M.gguf',
+        size: '~1.6GB',
+    },
+    {
+        name: 'MythoLogic-Mini-7B',
+        description: '高性能7B小型推理模型',
+        url: 'https://huggingface.co/TheBloke/MythoLogic-Mini-7B-GGUF/resolve/main/mythologic-mini-7b.Q4_K_M.gguf',
+        size: '~4GB',
+    }
 ];
 
 const ModelManagementScreen = () => {
@@ -60,7 +69,7 @@ const ModelManagementScreen = () => {
 
     const handleLoadModel = async (modelPath: string) => {
         try {
-            await loadModel(modelPath);
+            await loadModel(availableModels, modelPath);
             Alert.alert('成功', '模型加载成功');
         } catch (error) {
             console.error('Failed to load model:', error);
@@ -150,6 +159,7 @@ const ModelManagementScreen = () => {
                                     title={model.name}
                                     description={model.path}
                                     right={() => (
+                                        <View style={styles.itemButtonContainer}>
                                         <Button
                                             mode="outlined"
                                             onPress={() => handleLoadModel(model.path)}
@@ -157,6 +167,7 @@ const ModelManagementScreen = () => {
                                         >
                                             {isModelLoaded && selectedModel?.path === model.path ? '已加载' : '加载'}
                                         </Button>
+                                        </View>
                                     )}
                                 />
                                 <Divider/>
@@ -175,13 +186,15 @@ const ModelManagementScreen = () => {
                                 title={preset.name}
                                 description={`${preset.description} (${preset.size})`}
                                 right={() => (
-                                    <Button
-                                        mode="outlined"
-                                        onPress={() => openPresetDialog(preset)}
-                                        disabled={isDownloading}
-                                    >
-                                        下载
-                                    </Button>
+                                    <View style={styles.itemButtonContainer}>
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() => openPresetDialog(preset)}
+                                            disabled={isDownloading}
+                                        >
+                                            下载
+                                        </Button>
+                                    </View>
                                 )}
                             />
                             <Divider/>
@@ -294,6 +307,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 4,
     },
+    itemButtonContainer: {
+        marginLeft: 8,
+        justifyContent: 'center',
+    }
 });
 
 export default ModelManagementScreen;

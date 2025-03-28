@@ -1,39 +1,31 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    StyleSheet,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    ActivityIndicator,
-} from 'react-native';
-import { TextInput, IconButton, Surface, Text } from 'react-native-paper';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { useModel } from '../context/ModelContext';
-import { getChat, addMessage } from '../services/ChatStorage';
-import { Message, Chat } from '../types/chat';
+import React, {useEffect, useRef, useState} from 'react';
+import {ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, View,} from 'react-native';
+import {Surface, Text, TextInput} from 'react-native-paper';
+import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
+import {useModel} from '../context/ModelContext';
+import {addMessage, getChat} from '../services/ChatStorage';
+import {Chat, Message} from '../types/chat';
+import {RootStackParamList} from "../types/navigation-types";
 
-interface ChatScreenProps {
-    route: {
-        params: {
-            chatId: string;
-        };
-    };
-}
 
 const ChatScreen = () => {
-    const route = useRoute();
+    const route = useRoute<RouteProp<RootStackParamList, 'Chat'>>();
     const navigation = useNavigation();
-    const { chatId } = route.params as { chatId: string };
-    const { generateResponse, isModelLoaded } = useModel();
+    const {chatId} = route.params;
+    const {generateResponse, isModelLoaded} = useModel();
 
     const [chat, setChat] = useState<Chat | null>(null);
     const [inputText, setInputText] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
+        console.log('ChatScreen', chatId);
         loadChat();
+        return () => {
+            stopGeneration()
+        }
     }, [chatId]);
 
     const loadChat = () => {
@@ -71,7 +63,7 @@ const ChatScreen = () => {
 
         // 滚动到底部
         setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
+            flatListRef.current?.scrollToEnd({animated: true});
         }, 100);
 
         // 生成助手回复
@@ -81,7 +73,7 @@ const ChatScreen = () => {
             const formattedMessages = [
                 {
                     role: 'system',
-                    content: "你是一个有帮助的AI助手。",
+                    content: "You are an AI assistant running locally on the user's device. Provide brief, helpful responses. Acknowledge limitations when uncertain. Focus on being accurate and useful.",
                 }
             ];
 
@@ -99,8 +91,46 @@ const ChatScreen = () => {
                 content: userMessage,
             });
 
+            abortControllerRef.current = new AbortController();
+            let streamedContent = '';
+            let streamedCount = 0;
             // 调用模型生成回复
-            const response = await generateResponse(formattedMessages);
+            const response = await generateResponse(formattedMessages, (token) => {
+                streamedContent += token;
+                streamedCount++;
+                setChat(prevChat => {
+                    if (!prevChat) return null;
+
+                    const messages = [...prevChat.messages];
+                    const lastMessage = messages[messages.length - 1];
+
+                    const streamMessage: Message = {
+                        id: 'streaming_id',
+                        content: streamedContent,
+                        timestamp: Date.now(),
+                        role: 'assistant'
+                    };
+
+                    // 使用条件操作符检查最后一条消息
+                    if (!lastMessage || lastMessage.role === 'user') {
+                        // 如果没有最后一条消息或最后一条是用户消息，添加新的流式消息
+                        messages.push(streamMessage);
+                        setTimeout(() => {
+                            flatListRef.current?.scrollToEnd({animated: true});
+                        }, 100);
+                    } else {
+                        // 否则，替换最后一条消息（假设是助手消息）
+                        messages[messages.length - 1] = streamMessage;
+                        if (streamedCount % 10 === 0) {
+                            setTimeout(() => {
+                                flatListRef.current?.scrollToEnd({animated: true});
+                            }, 100);
+                        }
+                    }
+
+                    return {...prevChat, messages};
+                });
+            }, abortControllerRef.current);
 
             // 添加助手消息
             const assistantMessage = addMessage(chatId, 'assistant', response);
@@ -110,13 +140,13 @@ const ChatScreen = () => {
                 if (!prevChat) return null;
                 return {
                     ...prevChat,
-                    messages: [...prevChat.messages, assistantMessage],
+                    messages: [...prevChat.messages.filter((e) => e.id !== 'streaming_id'), assistantMessage],
                 };
             });
 
             // 再次滚动到底部
             setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
+                flatListRef.current?.scrollToEnd({animated: true});
             }, 100);
         } catch (error) {
             console.error('Failed to generate response:', error);
@@ -124,12 +154,20 @@ const ChatScreen = () => {
             addMessage(chatId, 'assistant', '抱歉，生成回复时出现错误。');
             loadChat(); // 重新加载聊天以获取最新状态
         } finally {
+            abortControllerRef.current = null;
+            setIsGenerating(false);
+        }
+    };
+
+    const stopGeneration = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
             setIsGenerating(false);
         }
     };
 
     // 渲染消息项目
-    const renderMessage = ({ item }: { item: Message }) => (
+    const renderMessage = ({item}: { item: Message }) => (
         <Surface style={[
             styles.messageBubble,
             item.role === 'user' ? styles.userMessage : styles.assistantMessage,
@@ -145,7 +183,7 @@ const ChatScreen = () => {
     if (!chat) {
         return (
             <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" />
+                <ActivityIndicator size="large"/>
             </View>
         );
     }
@@ -163,7 +201,7 @@ const ChatScreen = () => {
                 renderItem={renderMessage}
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.messageList}
-                onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                onLayout={() => flatListRef.current?.scrollToEnd({animated: false})}
             />
 
             <View style={styles.inputContainer}>
@@ -173,12 +211,11 @@ const ChatScreen = () => {
                     value={inputText}
                     onChangeText={setInputText}
                     multiline
-                    disabled={isGenerating}
                     right={
                         isGenerating ? (
-                            <TextInput.Icon icon="loading" disabled />
+                            <TextInput.Icon icon="stop" onPress={stopGeneration} />
                         ) : (
-                            <TextInput.Icon icon="send" onPress={handleSend} disabled={!inputText.trim()} />
+                            <TextInput.Icon icon="send" onPress={handleSend} disabled={!inputText.trim()}/>
                         )
                     }
                 />
@@ -186,7 +223,7 @@ const ChatScreen = () => {
 
             {isGenerating && (
                 <View style={styles.generatingContainer}>
-                    <ActivityIndicator size="small" />
+                    <ActivityIndicator size="small"/>
                     <Text style={styles.generatingText}>AI正在思考...</Text>
                 </View>
             )}
@@ -245,16 +282,14 @@ const styles = StyleSheet.create({
     generatingContainer: {
         position: 'absolute',
         top: 8,
-        left: 0,
-        right: 0,
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        padding: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
         borderRadius: 20,
         alignSelf: 'center',
-        width: 'auto',
     },
     generatingText: {
         color: '#ffffff',
