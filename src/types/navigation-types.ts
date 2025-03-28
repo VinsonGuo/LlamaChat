@@ -2,13 +2,13 @@
 // 在项目根目录下创建一个navigation-types.ts文件
 
 // src/types/navigation-types.ts
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 // 定义应用程序中所有屏幕及其参数
 export type RootStackParamList = {
-    Home: undefined;
-    Chat: { chatId: string };
-    ModelManagement: undefined;
+  Home: undefined;
+  Chat: { chatId: string };
+  ModelManagement: undefined;
 };
 
 // 为每个屏幕创建导航属性类型
