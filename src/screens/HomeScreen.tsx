@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     StyleSheet,
@@ -6,16 +6,23 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
-import { Button, Text, Card, IconButton, FAB, Dialog, Portal, TextInput } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { useModel } from '../context/ModelContext';
-import { getChatHistory, createChat, deleteChat, updateChatTitle, getChat, setCurrentChat } from '../services/ChatStorage';
-import { Chat } from '../types/chat';
+import {Button, Text, Card, IconButton, FAB, Dialog, Portal, TextInput} from 'react-native-paper';
+import {useNavigation} from '@react-navigation/native';
+import {useModel} from '../context/ModelContext';
+import {
+    getChatHistory,
+    createChat,
+    deleteChat,
+    updateChatTitle,
+    getChat,
+    setCurrentChat
+} from '../services/ChatStorage';
+import {Chat} from '../types/chat';
 import {HomeScreenNavigationProp} from "../types/navigation-types";
 
 const HomeScreen = () => {
     const navigation = useNavigation<HomeScreenNavigationProp>();
-    const { isModelLoaded, selectedModel, availableModels } = useModel();
+    const {isModelLoaded, selectedModel, availableModels} = useModel();
     const [chats, setChats] = useState<Chat[]>([]);
     const [refreshKey, setRefreshKey] = useState(0);
     const [editDialogVisible, setEditDialogVisible] = useState(false);
@@ -41,8 +48,8 @@ const HomeScreen = () => {
                 '无可用模型',
                 '请先在模型管理中下载并加载模型',
                 [
-                    { text: '取消', style: 'cancel' },
-                    { text: '前往模型管理', onPress: () => navigation.navigate('ModelManagement' as never) }
+                    {text: '取消', style: 'cancel'},
+                    {text: '前往模型管理', onPress: () => navigation.navigate('ModelManagement')}
                 ]
             );
             return;
@@ -50,12 +57,12 @@ const HomeScreen = () => {
 
         const newChat = createChat(selectedModel?.name || '未知模型');
         setRefreshKey(prev => prev + 1);
-        navigation.navigate('Chat', { chatId: newChat.id });
+        navigation.navigate('Chat', {chatId: newChat.id});
     };
 
     const handleOpenChat = (chat: Chat) => {
         setCurrentChat(chat.id);
-        navigation.navigate('Chat', { chatId: chat.id });
+        navigation.navigate('Chat', {chatId: chat.id});
     };
 
     const handleDeleteChat = (chatId: string) => {
@@ -63,7 +70,7 @@ const HomeScreen = () => {
             '删除对话',
             '确定要删除这个对话吗？此操作不可撤销。',
             [
-                { text: '取消', style: 'cancel' },
+                {text: '取消', style: 'cancel'},
                 {
                     text: '删除',
                     onPress: () => {
@@ -92,92 +99,92 @@ const HomeScreen = () => {
         }
     };
 
-    const renderChatItem = ({ item }: { item: Chat }) => (
+    const renderChatItem = ({item}: { item: Chat }) => (
         <Card style={styles.chatCard}>
-        <TouchableOpacity onPress={() => handleOpenChat(item)}>
-    <Card.Title
-        title={item.title}
-    subtitle={`${new Date(item.updatedAt).toLocaleString()} · ${item.modelName}`}
-    right={(props) => (
-        <View style={styles.cardActions}>
-            <IconButton
-                {...props}
-    icon="pencil"
-    onPress={() => handleEditChat(item)}
-    />
-    <IconButton
-    {...props}
-    icon="delete"
-    onPress={() => handleDeleteChat(item.id)}
-    />
-    </View>
-)}
-    />
-    </TouchableOpacity>
-    </Card>
-);
+            <TouchableOpacity onPress={() => handleOpenChat(item)}>
+                <Card.Title
+                    title={item.title}
+                    subtitle={`${new Date(item.updatedAt).toLocaleString()} · ${item.modelName}`}
+                    right={(props) => (
+                        <View style={styles.cardActions}>
+                            <IconButton
+                                {...props}
+                                icon="pencil"
+                                onPress={() => handleEditChat(item)}
+                            />
+                            <IconButton
+                                {...props}
+                                icon="delete"
+                                onPress={() => handleDeleteChat(item.id)}
+                            />
+                        </View>
+                    )}
+                />
+            </TouchableOpacity>
+        </Card>
+    );
 
     return (
         <View style={styles.container}>
-        <View style={styles.header}>
-        <Text style={styles.title}>LlamaChat</Text>
-            <Button
-    mode="outlined"
-    onPress={() => navigation.navigate('ModelManagement' as never)}
->
-    模型管理
-    </Button>
-    </View>
-
-    <View style={styles.modelInfo}>
-        <Text>当前模型: {selectedModel ? selectedModel.name : '无'}</Text>
-    <Text>状态: {isModelLoaded ? '已加载' : '未加载'}</Text>
-    </View>
-
-    {chats.length === 0 ? (
-            <View style={styles.emptyState}>
-                <Text>还没有聊天记录</Text>
+            <View style={styles.header}>
+                <Text style={styles.title}>LlamaChat</Text>
                 <Button
-        mode="contained"
-        onPress={handleNewChat}
-        style={styles.newChatButton}
-            >
-            开始新对话
-            </Button>
+                    mode="outlined"
+                    onPress={() => navigation.navigate('ModelManagement' as never)}
+                >
+                    模型管理
+                </Button>
             </View>
-    ) : (
-        <FlatList
-            data={chats}
-        renderItem={renderChatItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.chatList}
-        />
-    )}
 
-    <FAB
-        style={styles.fab}
-    icon="plus"
-    onPress={handleNewChat}
-    />
+            <View style={styles.modelInfo}>
+                <Text>当前模型: {selectedModel ? selectedModel.name : '无'}</Text>
+                <Text>状态: {isModelLoaded ? '已加载' : '未加载'}</Text>
+            </View>
 
-    <Portal>
-    <Dialog visible={editDialogVisible} onDismiss={() => setEditDialogVisible(false)}>
-    <Dialog.Title>编辑对话标题</Dialog.Title>
-    <Dialog.Content>
-    <TextInput
-        value={editTitle}
-    onChangeText={setEditTitle}
-    mode="outlined"
-    />
-    </Dialog.Content>
-    <Dialog.Actions>
-    <Button onPress={() => setEditDialogVisible(false)}>取消</Button>
-    <Button onPress={saveEditedTitle}>保存</Button>
-        </Dialog.Actions>
-        </Dialog>
-        </Portal>
+            {chats.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <Text>还没有聊天记录</Text>
+                    <Button
+                        mode="contained"
+                        onPress={handleNewChat}
+                        style={styles.newChatButton}
+                    >
+                        开始新对话
+                    </Button>
+                </View>
+            ) : (
+                <FlatList
+                    data={chats}
+                    renderItem={renderChatItem}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.chatList}
+                />
+            )}
+
+            <FAB
+                style={styles.fab}
+                icon="plus"
+                onPress={handleNewChat}
+            />
+
+            <Portal>
+                <Dialog visible={editDialogVisible} onDismiss={() => setEditDialogVisible(false)}>
+                    <Dialog.Title>编辑对话标题</Dialog.Title>
+                    <Dialog.Content>
+                        <TextInput
+                            value={editTitle}
+                            onChangeText={setEditTitle}
+                            mode="outlined"
+                        />
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <Button onPress={() => setEditDialogVisible(false)}>取消</Button>
+                        <Button onPress={saveEditedTitle}>保存</Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </View>
-);
+    );
 };
 
 const styles = StyleSheet.create({

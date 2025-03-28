@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MMKV } from 'react-native-mmkv';
-import { Alert } from 'react-native';
+import React, {createContext, useContext, useState, useEffect} from 'react';
+import {MMKV} from 'react-native-mmkv';
+import {Alert} from 'react-native';
 import * as RNFS from 'react-native-fs';
-import { initLlama, loadLlamaModelInfo } from 'llama.rn';
+import {initLlama, loadLlamaModelInfo} from 'llama.rn';
+import {LlamaContext} from "llama.rn/src";
 
 // 定义模型类型
 export interface LlamaModel {
@@ -26,10 +27,10 @@ const ModelContext = createContext<ModelContext | undefined>(undefined);
 // 持久化存储
 const storage = new MMKV();
 
-export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [availableModels, setAvailableModels] = useState<LlamaModel[]>([]);
     const [selectedModel, setSelectedModel] = useState<LlamaModel | null>(null);
-    const [modelContext, setModelContext] = useState<any | null>(null);
+    const [modelContext, setModelContext] = useState<LlamaContext | null>(null);
     const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [modelInfo, setModelInfo] = useState<any | null>(null);
 
@@ -144,10 +145,10 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 top_p: 0.9,
                 n_predict: 1024,   // 最大生成令牌数
                 stop: stopWords,
-            }, (data: any) => {
+            }, (data) => {
                 // 实时获取生成的tokens，可用于流式显示
                 // 此处可以添加回调处理，用于实时更新UI
-                // console.log('Token:', data.token);
+                console.log('Token:', data.token);
             });
 
             return result.text;
@@ -211,18 +212,18 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (
         <ModelContext.Provider
             value={{
-        availableModels,
-            selectedModel,
-            isModelLoaded,
-            loadModel,
-            generateResponse,
-            downloadModel,
-            modelInfo,
-    }}
->
-    {children}
-    </ModelContext.Provider>
-);
+                availableModels,
+                selectedModel,
+                isModelLoaded,
+                loadModel,
+                generateResponse,
+                downloadModel,
+                modelInfo,
+            }}
+        >
+            {children}
+        </ModelContext.Provider>
+    );
 };
 
 // 自定义Hook以便在组件中使用

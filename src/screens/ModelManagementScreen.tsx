@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
     View,
     StyleSheet,
@@ -17,7 +17,7 @@ import {
     Portal,
     Checkbox,
 } from 'react-native-paper';
-import { useModel } from '../context/ModelContext';
+import {useModel} from '../context/ModelContext';
 
 // 预设模型列表
 const PRESET_MODELS = [
@@ -110,7 +110,7 @@ const ModelManagementScreen = () => {
     return (
         <ScrollView style={styles.container}>
             <Card style={styles.section}>
-                <Card.Title title="当前模型" />
+                <Card.Title title="当前模型"/>
                 <Card.Content>
                     {selectedModel ? (
                         <View>
@@ -139,7 +139,7 @@ const ModelManagementScreen = () => {
             </Card>
 
             <Card style={styles.section}>
-                <Card.Title title="可用模型" />
+                <Card.Title title="可用模型"/>
                 <Card.Content>
                     {availableModels.length === 0 ? (
                         <Text>没有可用模型，请下载模型</Text>
@@ -159,7 +159,7 @@ const ModelManagementScreen = () => {
                                         </Button>
                                     )}
                                 />
-                                <Divider />
+                                <Divider/>
                             </View>
                         ))
                     )}
@@ -167,7 +167,7 @@ const ModelManagementScreen = () => {
             </Card>
 
             <Card style={styles.section}>
-                <Card.Title title="预设模型" />
+                <Card.Title title="预设模型"/>
                 <Card.Content>
                     {PRESET_MODELS.map((preset) => (
                         <View key={preset.name}>
@@ -184,14 +184,14 @@ const ModelManagementScreen = () => {
                                     </Button>
                                 )}
                             />
-                            <Divider />
+                            <Divider/>
                         </View>
                     ))}
                 </Card.Content>
             </Card>
 
             <Card style={styles.section}>
-                <Card.Title title="自定义下载" />
+                <Card.Title title="自定义下载"/>
                 <Card.Content>
                     <TextInput
                         label="模型名称"
@@ -221,7 +221,7 @@ const ModelManagementScreen = () => {
             {isDownloading && (
                 <Card style={styles.section}>
                     <Card.Content style={styles.downloadingContainer}>
-                        <ActivityIndicator size="large" />
+                        <ActivityIndicator size="large"/>
                         <Text style={styles.downloadingText}>
                             正在下载模型，请稍候...
                         </Text>
