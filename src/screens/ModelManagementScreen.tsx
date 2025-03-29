@@ -33,8 +33,8 @@ const PRESET_MODELS = [
   {
     name: 'Gemma-2B-GGUF',
     description: 'Google开源小型模型',
-    url: 'https://huggingface.co/google/gemma-2b-GGUF/resolve/main/gemma-2b.Q4_K_M.gguf',
-    size: '~1.2GB',
+    url: 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
+    size: '~1.6GB',
   },
   {
     name: 'Phi-2-DPO-GGUF',
@@ -57,6 +57,7 @@ const ModelManagementScreen = () => {
     isModelLoaded,
     loadModel,
     downloadModel,
+    deleteModel,
     modelInfo,
   } = useModel();
 
@@ -111,6 +112,37 @@ const ModelManagementScreen = () => {
     }
   };
 
+  const handleDeleteModel = (modelName: string) => {
+    // Check if this is the currently loaded model
+    const isCurrentModel = selectedModel && selectedModel.name === modelName;
+
+    Alert.alert(
+      '删除模型',
+      `确定要删除模型 "${modelName}"${isCurrentModel ? ' (当前已加载)' : ''}吗？`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteModel(modelName);
+              Alert.alert('成功', `模型 ${modelName} 已删除`);
+            } catch (error) {
+              console.error('Failed to delete model:', error);
+              Alert.alert('错误', '删除模型失败');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Modify the PRESET_MODELS mapping to show either Download or Delete button
+  const isModelDownloaded = (modelName: string) => {
+    return availableModels.some(model => model.name === modelName);
+  };
+
   const openPresetDialog = (preset: typeof PRESET_MODELS[0]) => {
     setSelectedPreset(preset);
     setShowPresetDialog(true);
@@ -124,7 +156,6 @@ const ModelManagementScreen = () => {
           {selectedModel ? (
             <View>
               <Text>名称: {selectedModel.name}</Text>
-              <Text>路径: {selectedModel.path}</Text>
               <Text>状态: {isModelLoaded ? '已加载' : '未加载'}</Text>
 
               {modelInfo && (
@@ -157,7 +188,6 @@ const ModelManagementScreen = () => {
               <View key={model.path}>
                 <List.Item
                   title={model.name}
-                  description={model.path}
                   right={() => (
                     <View style={styles.itemButtonContainer}>
                       <Button
@@ -180,26 +210,40 @@ const ModelManagementScreen = () => {
       <Card style={styles.section}>
         <Card.Title title="预设模型"/>
         <Card.Content>
-          {PRESET_MODELS.map((preset) => (
-            <View key={preset.name}>
-              <List.Item
-                title={preset.name}
-                description={`${preset.description} (${preset.size})`}
-                right={() => (
-                  <View style={styles.itemButtonContainer}>
-                    <Button
-                      mode="outlined"
-                      onPress={() => openPresetDialog(preset)}
-                      disabled={isDownloading}
-                    >
-                      下载
-                    </Button>
-                  </View>
-                )}
-              />
-              <Divider/>
-            </View>
-          ))}
+          {PRESET_MODELS.map((preset) => {
+            const downloaded = isModelDownloaded(preset.name);
+            return (
+              <View key={preset.name}>
+                <List.Item
+                  title={preset.name}
+                  description={`${preset.description} (${preset.size})`}
+                  right={() => (
+                    <View style={styles.itemButtonContainer}>
+                      {downloaded ? (
+                        <Button
+                          mode="outlined"
+                          onPress={() => handleDeleteModel(preset.name)}
+                          textColor="#d63031"
+                          disabled={isDownloading}
+                        >
+                          删除
+                        </Button>
+                      ) : (
+                        <Button
+                          mode="outlined"
+                          onPress={() => openPresetDialog(preset)}
+                          disabled={isDownloading}
+                        >
+                          下载
+                        </Button>
+                      )}
+                    </View>
+                  )}
+                />
+                <Divider/>
+              </View>
+            );
+          })}
         </Card.Content>
       </Card>
 

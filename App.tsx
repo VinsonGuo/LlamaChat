@@ -15,7 +15,8 @@ import {ModelProvider} from './src/context/ModelContext';
 
 // 导入导航类型
 import {RootStackParamList} from './src/types/navigation-types';
-import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import { SettingsProvider } from './src/context/SettingsContext';
+import SettingsScreen from "./src/screens/SettingsScreen";
 
 // 使用正确的泛型类型创建导航器
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -45,9 +46,10 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView>
-      <SafeAreaProvider>
-        <PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider>
+
+        <SettingsProvider>
           <ModelProvider>
             <NavigationContainer>
               <Stack.Navigator initialRouteName="Home">
@@ -66,12 +68,17 @@ export default function App() {
                   component={ModelManagementScreen}
                   options={{title: '模型管理'}}
                 />
+                <Stack.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{title: 'Settings'}}
+                />
               </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="auto"/>
           </ModelProvider>
-        </PaperProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+        </SettingsProvider>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }

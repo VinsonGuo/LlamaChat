@@ -1,7 +1,9 @@
 import React from 'react';
 import {StyleSheet, View, ViewStyle} from 'react-native';
-import {Card, Chip, Text, useTheme} from 'react-native-paper';
+import {Button, Card, Chip, Icon, Text, useTheme} from 'react-native-paper';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
+import {useNavigation} from "@react-navigation/native";
+import {HomeScreenNavigationProp} from "../types/navigation-types";
 
 interface ModelInfoProps {
   selectedModel: {
@@ -14,6 +16,7 @@ interface ModelInfoProps {
 
 const ModelInfoPanel = ({selectedModel, isModelLoaded, style}: ModelInfoProps) => {
   const theme = useTheme();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
 
   // 获取状态颜色
   const getStatusColor = () => {
@@ -45,6 +48,8 @@ const ModelInfoPanel = ({selectedModel, isModelLoaded, style}: ModelInfoProps) =
               style={styles.icon}
             />
             <Text variant="titleMedium" style={styles.headerText}>模型状态</Text>
+
+            <Button onPress={()=>navigation.navigate('ModelManagement')}>管理</Button>
           </View>
 
           <View style={styles.infoContainer}>

@@ -5,16 +5,17 @@ import {
   KeyboardAvoidingView,
   NativeScrollEvent,
   Platform,
-  StyleSheet, TouchableOpacity,
+  StyleSheet,
   View,
 } from 'react-native';
-import {IconButton, ProgressBar, Surface, Text, TextInput} from 'react-native-paper';
+import {IconButton, Surface, Text, TextInput} from 'react-native-paper';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
 import {addMessage, getChat} from '../services/ChatStorage';
 import {Chat, Message} from '../types/chat';
 import {RootStackParamList} from "../types/navigation-types";
 import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
+import {useSettings} from "../context/SettingsContext";
 
 
 const ChatScreen = () => {
@@ -22,6 +23,7 @@ const ChatScreen = () => {
   const navigation = useNavigation();
   const {chatId} = route.params;
   const {generateResponse, isModelLoaded} = useModel();
+  const {settings} = useSettings();
 
   const [chat, setChat] = useState<Chat | null>(null);
   const [inputText, setInputText] = useState('');
@@ -33,7 +35,7 @@ const ChatScreen = () => {
 
   useEffect(() => {
     loadChat();
-    setTimeout(()=> {
+    setTimeout(() => {
       flatListRef.current?.scrollToEnd({animated: false});
       setIsLoading(false);
     }, 300)
@@ -87,7 +89,7 @@ const ChatScreen = () => {
       const formattedMessages = [
         {
           role: 'system',
-          content: "You are an AI assistant running locally on the user's device. Provide brief, helpful responses. Acknowledge limitations when uncertain. Focus on being accurate and useful.",
+          content: settings.systemPrompt,
         }
       ];
 
@@ -184,8 +186,7 @@ const ChatScreen = () => {
     setIsAtBottom(bottom);
   };
 
-  // 渲染消息项目
-  const renderMessage = ({item}: { item: Message }) => (
+  const MemoizedMessageItem = React.memo(({item}: { item: Message }) => (
     <Surface style={[
       styles.messageBubble,
       item.role === 'user' ? styles.userMessage : styles.assistantMessage,
@@ -195,7 +196,11 @@ const ChatScreen = () => {
         {new Date(item.timestamp).toLocaleTimeString()}
       </Text>
     </Surface>
-  );
+  ), (prevProps, nextProps) => {
+    // Only re-render if the message content or ID changes
+    return prevProps.item.id === nextProps.item.id &&
+      prevProps.item.content === nextProps.item.content;
+  });
 
   // 如果聊天未加载或没有消息，显示加载状态
   if (!chat) {
@@ -215,10 +220,10 @@ const ChatScreen = () => {
     >
       <View style={styles.chatContainer}>
         <FlatList
-          style={{opacity: isLoading? 0:1}}
+          style={{opacity: isLoading ? 0 : 1}}
           ref={flatListRef}
           data={chat.messages}
-          renderItem={renderMessage}
+          renderItem={({item}: { item: Message }) => <MemoizedMessageItem item={item}/>}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
           onScroll={handleScroll}
@@ -245,7 +250,7 @@ const ChatScreen = () => {
             isGenerating ? (
               <TextInput.Icon icon="stop" onPress={stopGeneration}/>
             ) : (
-              <TextInput.Icon icon="send" onPress={handleSend} disabled={!inputText.trim()}/>
+              <TextInput.Icon icon="send" onPress={handleSend} disabled={!inputText.trim() || !isModelLoaded}/>
             )
           }
         />

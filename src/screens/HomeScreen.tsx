@@ -1,7 +1,7 @@
-import React, {useEffect, useLayoutEffect, useState} from 'react';
-import {Alert, FlatList, StyleSheet, View,} from 'react-native';
+import React, {useCallback, useEffect, useLayoutEffect, useState} from 'react';
+import {ActivityIndicator, Alert, FlatList, StyleSheet, View,} from 'react-native';
 import {Button, Dialog, FAB, IconButton, Portal, Text, TextInput} from 'react-native-paper';
-import {useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
 import {createChat, deleteChat, getChatHistory, setCurrentChat, updateChatTitle} from '../services/ChatStorage';
 import {Chat} from '../types/chat';
@@ -20,22 +20,27 @@ const HomeScreen = () => {
   const [editTitle, setEditTitle] = useState('');
 
   useLayoutEffect(() => {
-    const navigateToSettings = () => {
-      console.log('test')
-    };
     navigation.setOptions({
       headerRight: () => (
         <IconButton
           icon="cog"
-          onPressOut={() => navigation.navigate('ModelManagement')}
+          onPressOut={() => navigation.navigate('Settings')}
         />
       ),
     });
   }, [navigation]);
-  // 加载聊天历史
-  useEffect(() => {
-    loadChats();
-  }, [refreshKey]);
+// With this:
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Screen focused - loading chats');
+      loadChats();
+
+      // Optional: Return a cleanup function if needed
+      return () => {
+        // Any cleanup code can go here
+      };
+    }, [refreshKey]) // Keep refreshKey in the dependency array
+  );
 
   const loadChats = () => {
     const history = getChatHistory();
@@ -63,8 +68,12 @@ const HomeScreen = () => {
   };
 
   const handleOpenChat = (chat: Chat) => {
-    setCurrentChat(chat.id);
-    navigation.navigate('Chat', {chatId: chat.id});
+    if (chat.modelName === selectedModel?.name) {
+      setCurrentChat(chat.id);
+      navigation.navigate('Chat', {chatId: chat.id});
+    } else {
+      Alert.alert('目标模型与当前模型不匹配', `请在模型管理页面选择${chat.modelName}模型`);
+    }
   };
 
   const handleDeleteChat = (chatId: string) => {

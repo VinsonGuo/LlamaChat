@@ -4,6 +4,7 @@ import {Alert} from 'react-native';
 import * as RNFS from 'react-native-fs';
 import {initLlama, loadLlamaModelInfo} from 'llama.rn';
 import {LlamaContext} from "llama.rn/src";
+import {useSettings} from "./SettingsContext";
 
 // 定义模型类型
 export interface LlamaModel {
@@ -20,6 +21,7 @@ interface ModelContext {
   generateResponse: (messages: any[], onToken: (token: string) => void, abortSignal?: AbortController) => Promise<string>;
   downloadModel: (url: string, modelName: string,
                   progressCallback: (progress: number) => void) => Promise<void>;
+  deleteModel: (modelName: string)=> Promise<void>
   modelInfo: any | null;
 }
 
@@ -34,6 +36,8 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
   const [modelContext, setModelContext] = useState<LlamaContext | null>(null);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [modelInfo, setModelInfo] = useState<any | null>(null);
+
+  const {settings} = useSettings();
 
   // 按模型类型的常用停止词
   const stopWords = [
@@ -130,21 +134,6 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         await modelContext.release();
       }
 
-      // 获取模型信息
-      await loadModelInfo(modelPath);
-
-      // 创建新的Llama上下文
-      const context = await initLlama({
-        model: modelPath,
-        use_mlock: true,
-        n_ctx: 2048,       // 上下文窗口大小
-        n_batch: 512,      // 批处理大小
-        n_threads: 4,      // 根据设备性能调整线程数
-        n_gpu_layers: 0,   // 在iOS上设置为大于0的值可启用Metal加速
-      });
-
-      setModelContext(context);
-
       // 找到对应的模型数据并设置为当前模型
       const model = models.find(m => m.path === modelPath) || {
         name: 'Unknown Model',
@@ -152,6 +141,22 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
       };
 
       setSelectedModel(model);
+
+      // 获取模型信息
+      await loadModelInfo(modelPath);
+
+      // 创建新的Llama上下文
+      const context = await initLlama({
+        model: modelPath,
+        use_mlock: true,
+        n_ctx: settings.n_ctx,
+        n_batch: settings.n_batch,
+        n_threads: settings.n_threads,
+        n_gpu_layers: settings.n_gpu_layers,
+      });
+
+      setModelContext(context);
+
       storage.set('lastModelPath', modelPath);
       setIsModelLoaded(true);
     } catch (error) {
@@ -172,9 +177,9 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
       // 使用completion方法生成响应
       const result = await modelContext.completion({
         messages,
-        temperature: 0.7,
-        top_p: 0.9,
-        n_predict: 1024,   // 最大生成令牌数
+        temperature: settings.temperature,
+        top_p: settings.top_p,
+        n_predict: settings.n_predict,
         stop: stopWords,
       }, async (data) => {
         // 检查是否有取消信号
@@ -227,7 +232,10 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         },
       };
 
-      await RNFS.downloadFile(downloadOptions).promise;
+      const result = await RNFS.downloadFile(downloadOptions).promise;
+      if (result.statusCode !== 200) {
+        throw new Error(`statusCode: ${result.statusCode}`);
+      }
 
       // 添加到可用模型列表
       const newModel = {
@@ -240,6 +248,42 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     } catch (error) {
       console.error('Failed to download model:', error);
       Alert.alert('错误', '下载模型失败');
+    }
+  };
+
+  const deleteModel = async (modelName: string): Promise<void> => {
+    try {
+      const modelPath = `${RNFS.DocumentDirectoryPath}/models/${modelName}.gguf`;
+
+      // Check if file exists
+      const exists = await RNFS.exists(modelPath);
+      if (!exists) {
+        throw new Error('Model file does not exist');
+      }
+
+      // If this is the currently loaded model, release it first
+      if (selectedModel && selectedModel.name === modelName) {
+        if (modelContext) {
+          await modelContext.release();
+        }
+        setSelectedModel(null);
+        setIsModelLoaded(false);
+        setModelContext(null);
+        storage.delete('lastModelPath');
+      }
+
+      // Delete the file
+      await RNFS.unlink(modelPath);
+
+      // Update available models list
+      setAvailableModels(prevModels =>
+        prevModels.filter(model => model.name !== modelName)
+      );
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+      throw error;
     }
   };
 
@@ -262,6 +306,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         generateResponse,
         downloadModel,
         modelInfo,
+        deleteModel,
       }}
     >
       {children}
