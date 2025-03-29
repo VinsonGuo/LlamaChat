@@ -17,12 +17,16 @@ import {ModelProvider} from './src/context/ModelContext';
 import {RootStackParamList} from './src/types/navigation-types';
 import { SettingsProvider } from './src/context/SettingsContext';
 import SettingsScreen from "./src/screens/SettingsScreen";
+import {Appearance, useColorScheme} from "react-native";
+import setColorScheme = Appearance.setColorScheme;
 
 // 使用正确的泛型类型创建导航器
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
+
+  setColorScheme('light')
 
   useEffect(() => {
     // 应用初始化代码，例如检查模型是否已下载等
