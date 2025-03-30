@@ -1,6 +1,6 @@
 import React from 'react';
 import {StyleSheet, View, ViewStyle} from 'react-native';
-import {Button, Card, Chip, Icon, Text, useTheme} from 'react-native-paper';
+import {Button, Card, Chip, Text, useTheme} from 'react-native-paper';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useNavigation} from "@react-navigation/native";
 import {HomeScreenNavigationProp} from "../types/navigation-types";
@@ -48,8 +48,9 @@ const ModelInfoPanel = ({selectedModel, isModelLoaded, style}: ModelInfoProps) =
               style={styles.icon}
             />
             <Text variant="titleMedium" style={styles.headerText}>Model Status</Text>
-
-            <Button onPress={()=>navigation.navigate('ModelManagement')}>Manage</Button>
+            <View style={{flex: 1}}></View>
+            <Button mode={"contained-tonal"}
+                    onPress={() => navigation.navigate('ModelManagement')}>Manage</Button>
           </View>
 
           <View style={styles.infoContainer}>

@@ -188,10 +188,11 @@ const ModelManagementScreen = () => {
               <View key={model.path}>
                 <List.Item
                   title={model.name}
+                  titleNumberOfLines={2}
                   right={() => (
                     <View style={styles.itemButtonContainer}>
                       <Button
-                        mode="outlined"
+                        mode="contained-tonal"
                         onPress={() => handleLoadModel(model.path)}
                         disabled={isModelLoaded && selectedModel?.path === model.path}
                       >
@@ -217,11 +218,12 @@ const ModelManagementScreen = () => {
                 <List.Item
                   title={preset.name}
                   description={`${preset.description} (${preset.size})`}
+                  descriptionNumberOfLines={5}
                   right={() => (
                     <View style={styles.itemButtonContainer}>
                       {downloaded ? (
                         <Button
-                          mode="outlined"
+                          mode="contained-tonal"
                           onPress={() => handleDeleteModel(preset.name)}
                           textColor="#d63031"
                           disabled={isDownloading}
@@ -230,7 +232,7 @@ const ModelManagementScreen = () => {
                         </Button>
                       ) : (
                         <Button
-                          mode="outlined"
+                          mode="contained-tonal"
                           onPress={() => openPresetDialog(preset)}
                           disabled={isDownloading}
                         >
