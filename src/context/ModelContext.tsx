@@ -6,13 +6,13 @@ import {initLlama, loadLlamaModelInfo} from 'llama.rn';
 import {LlamaContext} from "llama.rn/src";
 import {useSettings} from "./SettingsContext";
 
-// 定义模型类型
+// Define model type
 export interface LlamaModel {
   name: string;
   path: string;
 }
 
-// 定义上下文类型
+// Define context type
 interface ModelContext {
   availableModels: LlamaModel[];
   selectedModel: LlamaModel | null;
@@ -27,7 +27,7 @@ interface ModelContext {
 
 const ModelContext = createContext<ModelContext | undefined>(undefined);
 
-// 持久化存储
+// Persistent storage
 const storage = new MMKV();
 
 export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
@@ -39,9 +39,9 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
 
   const {settings} = useSettings();
 
-  // 按模型类型的常用停止词
+  // Common stop words by model type
   const stopWords = [
-    // 通用停止词
+    // General stop words
     '</s>',
     '<|end|>',
     '<|eot_id|>',
@@ -52,7 +52,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     '<|end_of_turn|>',
     '<|endoftext|>',
 
-    // Llama专用停止词
+    // Llama-specific stop words
     '[INST]',
     '[/INST]',
     '<|assistant|>',
@@ -60,42 +60,42 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     '<|system|>',
     '<|im_start|>',
 
-    // Phi专用停止词
+    // Phi-specific stop words
     'Instruct:',
     'Output:',
     '### Human:',
     '### Assistant:',
 
-    // Gemma专用停止词
+    // Gemma-specific stop words
     '<end_of_turn>',
     '<start_of_turn>'
   ];
 
-  // 初始化时检查已有模型
+  // Check existing models on initialization
   useEffect(() => {
     const checkExistingModels = async () => {
       try {
         const modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
 
-        // 确保模型目录存在
+        // Ensure model directory exists
         const dirExists = await RNFS.exists(modelsDir);
         if (!dirExists) {
           await RNFS.mkdir(modelsDir);
         }
 
-        // 读取模型目录
+        // Read model directory
         const files = await RNFS.readDir(modelsDir);
         const modelFiles = files.filter(file => file.name.endsWith('.gguf'));
 
-        // 创建模型列表
+        // Create model list
         const models: LlamaModel[] = modelFiles.map(file => ({
           name: file.name.replace('.gguf', ''),
-          path: `file://${file.path}`,  // 注意这里使用file://前缀
+          path: `file://${file.path}`,  // Note: using file:// prefix here
         }));
 
         setAvailableModels(models);
 
-        // 检查是否有上次使用的模型
+        // Check if there's a previously used model
         const lastModelPath = storage.getString('lastModelPath');
         console.log('lastModelPath', lastModelPath);
         if (lastModelPath) {
@@ -106,7 +106,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         }
       } catch (error) {
         console.error('Failed to check existing models:', error);
-        Alert.alert('错误', '检查模型失败');
+        Alert.alert('Error', 'Failed to check models');
       }
     };
 
@@ -129,12 +129,12 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     try {
       setIsModelLoaded(false);
 
-      // 如果之前有加载的模型，先释放资源
+      // If there's a previously loaded model, release resources first
       if (modelContext) {
         await modelContext.release();
       }
 
-      // 找到对应的模型数据并设置为当前模型
+      // Find corresponding model data and set as current model
       const model = models.find(m => m.path === modelPath) || {
         name: 'Unknown Model',
         path: modelPath
@@ -142,10 +142,10 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
 
       setSelectedModel(model);
 
-      // 获取模型信息
+      // Get model information
       await loadModelInfo(modelPath);
 
-      // 创建新的Llama上下文
+      // Create new Llama context
       const context = await initLlama({
         model: modelPath,
         use_mlock: true,
@@ -161,7 +161,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
       setIsModelLoaded(true);
     } catch (error) {
       console.error('Failed to load model:', error);
-      Alert.alert('错误', '加载模型失败');
+      Alert.alert('Error', 'Failed to load model');
     }
   };
 
@@ -170,11 +170,11 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     onToken: (token: string) => void,
     abortSignal?: AbortController): Promise<string> => {
     if (!modelContext || !isModelLoaded) {
-      throw new Error('模型未加载');
+      throw new Error('Model not loaded');
     }
 
     try {
-      // 使用completion方法生成响应
+      // Use completion method to generate response
       const result = await modelContext.completion({
         messages,
         temperature: settings.temperature,
@@ -182,14 +182,14 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         n_predict: settings.n_predict,
         stop: stopWords,
       }, async (data) => {
-        // 检查是否有取消信号
+        // Check if there's a cancel signal
         if (abortSignal?.signal.aborted) {
-          // 中断生成
+          // Interrupt generation
           await modelContext.stopCompletion()
           return;
         }
-        // 实时获取生成的tokens，可用于流式显示
-        // 此处可以添加回调处理，用于实时更新UI
+        // Get generated tokens in real-time, can be used for streaming display
+        // Callback handling can be added here for real-time UI updates
         console.log('Token:', data.token);
         onToken(data.token);
       });
@@ -197,7 +197,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
       return result.text;
     } catch (error) {
       console.error('Failed to generate response:', error);
-      throw new Error('生成响应失败');
+      throw new Error('Failed to generate response');
     }
   };
 
@@ -210,13 +210,13 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
       const modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
       const modelPath = `${modelsDir}/${modelName}.gguf`;
 
-      // 确保模型目录存在
+      // Ensure model directory exists
       const dirExists = await RNFS.exists(modelsDir);
       if (!dirExists) {
         await RNFS.mkdir(modelsDir);
       }
 
-      // 开始下载
+      // Start download
       const downloadOptions = {
         fromUrl: url,
         toFile: modelPath,
@@ -237,17 +237,17 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         throw new Error(`statusCode: ${result.statusCode}`);
       }
 
-      // 添加到可用模型列表
+      // Add to available models list
       const newModel = {
         name: modelName,
-        path: `file://${modelPath}`,  // 注意这里添加file://前缀
+        path: `file://${modelPath}`,  // Note: adding file:// prefix here
       };
 
       setAvailableModels(prevModels => [...prevModels, newModel]);
-      Alert.alert('下载完成', `模型 ${modelName} 已下载完成。`);
+      Alert.alert('Download Complete', `Model ${modelName} has been downloaded.`);
     } catch (error) {
       console.error('Failed to download model:', error);
-      Alert.alert('错误', '下载模型失败');
+      Alert.alert('Error', 'Failed to download model');
     }
   };
 
@@ -287,7 +287,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     }
   };
 
-  // 当组件卸载时释放资源
+  // Release resources when component unmounts
   useEffect(() => {
     return () => {
       if (modelContext) {
@@ -314,7 +314,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
   );
 };
 
-// 自定义Hook以便在组件中使用
+// Custom Hook for use in components
 export const useModel = () => {
   const context = useContext(ModelContext);
   if (context === undefined) {

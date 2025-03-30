@@ -49,12 +49,12 @@ const ChatScreen = () => {
     if (loadedChat) {
       setChat(loadedChat);
 
-      // 更新导航栏标题
+      // Update navigation bar title
       navigation.setOptions({
         title: loadedChat.title
       });
     } else {
-      // 如果找不到聊天，返回上一页
+      // If chat not found, go back to previous page
       navigation.goBack();
     }
   };
@@ -65,10 +65,10 @@ const ChatScreen = () => {
     const userMessage = inputText.trim();
     setInputText('');
 
-    // 添加用户消息
+    // Add user message
     const newUserMessage = addMessage(chatId, 'user', userMessage);
 
-    // 更新本地状态
+    // Update local state
     setChat(prevChat => {
       if (!prevChat) return null;
       return {
@@ -77,15 +77,15 @@ const ChatScreen = () => {
       };
     });
 
-    // 滚动到底部
+    // Scroll to bottom
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({animated: true});
     }, 100);
 
-    // 生成助手回复
+    // Generate assistant reply
     setIsGenerating(true);
     try {
-      // 准备消息格式
+      // Prepare message format
       const formattedMessages = [
         {
           role: 'system',
@@ -93,7 +93,7 @@ const ChatScreen = () => {
         }
       ];
 
-      // 将历史消息添加到格式化消息中
+      // Add history messages to formatted messages
       chat.messages.forEach(msg => {
         formattedMessages.push({
           role: msg.role,
@@ -101,7 +101,7 @@ const ChatScreen = () => {
         });
       });
 
-      // 添加用户最新消息
+      // Add user's latest message
       formattedMessages.push({
         role: 'user',
         content: userMessage,
@@ -110,7 +110,7 @@ const ChatScreen = () => {
       abortControllerRef.current = new AbortController();
       let streamedContent = '';
       let streamedCount = 0;
-      // 调用模型生成回复
+      // Call model to generate response
       const response = await generateResponse(formattedMessages, (token) => {
         streamedContent += token;
         streamedCount++;
@@ -127,7 +127,7 @@ const ChatScreen = () => {
             role: 'assistant'
           };
 
-          // 使用条件操作符检查最后一条消息
+          // Use conditional operator to check the last message
           if (!lastMessage || lastMessage.role === 'user') {
             messages.push(streamMessage);
           } else {
@@ -140,10 +140,10 @@ const ChatScreen = () => {
         });
       }, abortControllerRef.current);
 
-      // 添加助手消息
+      // Add assistant message
       const assistantMessage = addMessage(chatId, 'assistant', response.trim());
 
-      // 更新本地状态
+      // Update local state
       setChat(prevChat => {
         if (!prevChat) return null;
         return {
@@ -159,9 +159,9 @@ const ChatScreen = () => {
       }
     } catch (error) {
       console.error('Failed to generate response:', error);
-      // 处理错误，例如添加错误消息
-      addMessage(chatId, 'assistant', '抱歉，生成回复时出现错误。');
-      loadChat(); // 重新加载聊天以获取最新状态
+      // Handle error, e.g., add error message
+      addMessage(chatId, 'assistant', 'Sorry, an error occurred while generating a response.');
+      loadChat(); // Reload chat to get the latest state
     } finally {
       abortControllerRef.current = null;
       setIsGenerating(false);
@@ -202,7 +202,7 @@ const ChatScreen = () => {
       prevProps.item.content === nextProps.item.content;
   });
 
-  // 如果聊天未加载或没有消息，显示加载状态
+  // If chat is not loaded or has no messages, show loading state
   if (!chat) {
     return (
       <View style={styles.centerContainer}>
@@ -211,7 +211,7 @@ const ChatScreen = () => {
     );
   }
 
-  // 渲染主界面
+  // Render main interface
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -242,7 +242,7 @@ const ChatScreen = () => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="输入消息..."
+          placeholder="Enter message..."
           value={inputText}
           onChangeText={setInputText}
           multiline
@@ -259,7 +259,7 @@ const ChatScreen = () => {
       {isGenerating && (
         <View style={styles.generatingContainer}>
           <ActivityIndicator size="small"/>
-          <Text style={styles.generatingText}>AI正在思考...</Text>
+          <Text style={styles.generatingText}>AI is thinking...</Text>
         </View>
       )}
     </KeyboardAvoidingView>
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    position: 'relative', // 重要：为了正确定位滚动按钮
+    position: 'relative', // Important: for correctly positioning the scroll button
   },
   messageList: {
     paddingHorizontal: 16,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 30,
     elevation: 2,
-    // iOS阴影属性
+    // iOS shadow properties
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.22,

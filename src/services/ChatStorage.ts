@@ -1,17 +1,17 @@
 import {MMKV} from 'react-native-mmkv';
 import {Chat, ChatHistory, Message} from '../types/chat';
 
-// 使用MMKV作为本地存储
+// Use MMKV as local storage
 const storage = new MMKV();
 const CHAT_HISTORY_KEY = 'chat_history';
 
-// 生成唯一ID的辅助函数
+// Helper function to generate unique ID
 const generateId = (): string => {
   return Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15);
 };
 
-// 获取聊天历史
+// Get chat history
 export const getChatHistory = (): ChatHistory => {
   const stored = storage.getString(CHAT_HISTORY_KEY);
   if (!stored) {
@@ -26,19 +26,19 @@ export const getChatHistory = (): ChatHistory => {
   }
 };
 
-// 保存聊天历史
+// Save chat history
 export const saveChatHistory = (history: ChatHistory): void => {
   storage.set(CHAT_HISTORY_KEY, JSON.stringify(history));
 };
 
-// 创建新的聊天会话
+// Create new chat session
 export const createChat = (modelName: string): Chat => {
   const now = Date.now();
   const chatId = generateId();
 
   const newChat: Chat = {
     id: chatId,
-    title: `新对话 ${new Date(now).toLocaleTimeString()}`,
+    title: `New Conversation ${new Date(now).toLocaleTimeString()}`,
     messages: [],
     createdAt: now,
     updatedAt: now,
@@ -53,7 +53,7 @@ export const createChat = (modelName: string): Chat => {
   return newChat;
 };
 
-// 添加消息到聊天会话
+// Add message to chat session
 export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string): Message => {
   const history = getChatHistory();
   const chat = history.chats[chatId];
@@ -72,9 +72,9 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   chat.messages.push(message);
   chat.updatedAt = Date.now();
 
-  // 如果是用户消息，可以根据内容更新对话标题
+  // If it's a user message, can update the conversation title based on content
   if (role === 'user' && chat.messages.length <= 2) {
-    // 取用户第一条消息的前20个字符作为标题
+    // Take the first 20 characters of the user's first message as the title
     chat.title = content.substring(0, 20) + (content.length > 20 ? '...' : '');
   }
 
@@ -82,20 +82,20 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   return message;
 };
 
-// 获取指定的聊天会话
+// Get a specific chat session
 export const getChat = (chatId: string): Chat | null => {
   const history = getChatHistory();
   return history.chats[chatId] || null;
 };
 
-// 删除聊天会话
+// Delete chat session
 export const deleteChat = (chatId: string): void => {
   const history = getChatHistory();
 
   if (history.chats[chatId]) {
     delete history.chats[chatId];
 
-    // 如果删除的是当前会话，需要重置currentChatId
+    // If the deleted chat is the current session, need to reset currentChatId
     if (history.currentChatId === chatId) {
       const chatIds = Object.keys(history.chats);
       history.currentChatId = chatIds.length > 0 ? chatIds[0] : null;
@@ -105,7 +105,7 @@ export const deleteChat = (chatId: string): void => {
   }
 };
 
-// 更新聊天标题
+// Update chat title
 export const updateChatTitle = (chatId: string, title: string): void => {
   const history = getChatHistory();
 
@@ -115,7 +115,7 @@ export const updateChatTitle = (chatId: string, title: string): void => {
   }
 };
 
-// 设置当前活动的聊天会话
+// Set the current active chat session
 export const setCurrentChat = (chatId: string): void => {
   const history = getChatHistory();
 

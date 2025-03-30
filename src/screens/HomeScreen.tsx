@@ -52,17 +52,17 @@ const HomeScreen = () => {
   const handleNewChat = () => {
     if (!isModelLoaded) {
       Alert.alert(
-        '无可用模型',
-        '请先在模型管理中下载并加载模型',
+        'No Available Model',
+        'Please download and load a model in Model Management first',
         [
-          {text: '取消', style: 'cancel'},
-          {text: '前往模型管理', onPress: () => navigation.navigate('ModelManagement')}
+          {text: 'Cancel', style: 'cancel'},
+          {text: 'Go to Model Management', onPress: () => navigation.navigate('ModelManagement')}
         ]
       );
       return;
     }
 
-    const newChat = createChat(selectedModel?.name || '未知模型');
+    const newChat = createChat(selectedModel?.name || 'Unknown Model');
     setRefreshKey(prev => prev + 1);
     navigation.navigate('Chat', {chatId: newChat.id});
   };
@@ -72,18 +72,18 @@ const HomeScreen = () => {
       setCurrentChat(chat.id);
       navigation.navigate('Chat', {chatId: chat.id});
     } else {
-      Alert.alert('目标模型与当前模型不匹配', `请在模型管理页面选择${chat.modelName}模型`);
+      Alert.alert('Target model does not match current model', `Please select ${chat.modelName} model in Model Management page`);
     }
   };
 
   const handleDeleteChat = (chatId: string) => {
     Alert.alert(
-      '删除对话',
-      '确定要删除这个对话吗？此操作不可撤销。',
+      'Delete Conversation',
+      'Are you sure you want to delete this conversation? This action cannot be undone.',
       [
-        {text: '取消', style: 'cancel'},
+        {text: 'Cancel', style: 'cancel'},
         {
-          text: '删除',
+          text: 'Delete',
           onPress: () => {
             deleteChat(chatId);
             setRefreshKey(prev => prev + 1);
@@ -121,13 +121,13 @@ const HomeScreen = () => {
 
       {chats.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text>还没有聊天记录</Text>
+          <Text>No chat history yet</Text>
           <Button
             mode="contained"
             onPress={handleNewChat}
             style={styles.newChatButton}
           >
-            开始新对话
+            Start New Conversation
           </Button>
         </View>
       ) : (
@@ -160,7 +160,7 @@ const HomeScreen = () => {
 
       <Portal>
         <Dialog visible={editDialogVisible} onDismiss={() => setEditDialogVisible(false)}>
-          <Dialog.Title>编辑对话标题</Dialog.Title>
+          <Dialog.Title>Edit Conversation Title</Dialog.Title>
           <Dialog.Content>
             <TextInput
               value={editTitle}
@@ -169,8 +169,8 @@ const HomeScreen = () => {
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setEditDialogVisible(false)}>取消</Button>
-            <Button onPress={saveEditedTitle}>保存</Button>
+            <Button onPress={() => setEditDialogVisible(false)}>Cancel</Button>
+            <Button onPress={saveEditedTitle}>Save</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -227,10 +227,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editButton: {
-    backgroundColor: '#2196F3', // 蓝色编辑按钮
+    backgroundColor: '#2196F3', // Blue edit button
   },
   deleteButton: {
-    backgroundColor: '#F44336', // 红色删除按钮
+    backgroundColor: '#F44336', // Red delete button
   },
 });
 

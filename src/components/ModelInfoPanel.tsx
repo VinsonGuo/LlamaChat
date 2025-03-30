@@ -18,19 +18,19 @@ const ModelInfoPanel = ({selectedModel, isModelLoaded, style}: ModelInfoProps) =
   const theme = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
-  // 获取状态颜色
+  // Get status color
   const getStatusColor = () => {
-    if (!selectedModel) return '#9e9e9e'; // 灰色 - 无模型
-    return isModelLoaded ? '#4caf50' : '#ff9800'; // 绿色 - 已加载，橙色 - 未加载
+    if (!selectedModel) return '#9e9e9e'; // Gray - No model
+    return isModelLoaded ? '#4caf50' : '#ff9800'; // Green - Loaded, Orange - Not loaded
   };
 
-  // 获取状态文本
+  // Get status text
   const getStatusText = () => {
-    if (!selectedModel) return '未选择模型';
-    return isModelLoaded ? '已加载' : '未加载';
+    if (!selectedModel) return 'No Model Selected';
+    return isModelLoaded ? 'Loaded' : 'Not Loaded';
   };
 
-  // 获取状态图标
+  // Get status icon
   const getStatusIcon = () => {
     if (!selectedModel) return 'cancel';
     return isModelLoaded ? 'check-circle' : 'clock-outline';
@@ -47,25 +47,25 @@ const ModelInfoPanel = ({selectedModel, isModelLoaded, style}: ModelInfoProps) =
               color={theme.colors.primary}
               style={styles.icon}
             />
-            <Text variant="titleMedium" style={styles.headerText}>模型状态</Text>
+            <Text variant="titleMedium" style={styles.headerText}>Model Status</Text>
 
-            <Button onPress={()=>navigation.navigate('ModelManagement')}>管理</Button>
+            <Button onPress={()=>navigation.navigate('ModelManagement')}>Manage</Button>
           </View>
 
           <View style={styles.infoContainer}>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>当前模型:</Text>
+              <Text style={styles.label}>Current Model:</Text>
               <View style={styles.valueContainer}>
                 {selectedModel ? (
                   <Text style={styles.valueText}>{selectedModel.name}</Text>
                 ) : (
-                  <Text style={styles.placeholderText}>未选择</Text>
+                  <Text style={styles.placeholderText}>Not Selected</Text>
                 )}
               </View>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.label}>状态:</Text>
+              <Text style={styles.label}>Status:</Text>
               <Chip
                 mode="outlined"
                 style={{borderColor: getStatusColor()}}

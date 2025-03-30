@@ -5,22 +5,22 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {Provider as PaperProvider} from 'react-native-paper';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
-// 导入应用屏幕
+// Import application screens
 import HomeScreen from './src/screens/HomeScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ModelManagementScreen from './src/screens/ModelManagementScreen';
 
-// 导入模型管理上下文
+// Import model management context
 import {ModelProvider} from './src/context/ModelContext';
 
-// 导入导航类型
+// Import navigation types
 import {RootStackParamList} from './src/types/navigation-types';
 import { SettingsProvider } from './src/context/SettingsContext';
 import SettingsScreen from "./src/screens/SettingsScreen";
 import {Appearance, useColorScheme} from "react-native";
 import setColorScheme = Appearance.setColorScheme;
 
-// 使用正确的泛型类型创建导航器
+// Create navigator with the correct generic type
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
@@ -29,11 +29,11 @@ export default function App() {
   setColorScheme('light')
 
   useEffect(() => {
-    // 应用初始化代码，例如检查模型是否已下载等
+    // Application initialization code, such as checking if models are downloaded
     const prepareApp = async () => {
       try {
-        // 可以在这里添加应用启动时需要执行的代码
-        // 例如：初始化模型，检查存储权限等
+        // You can add code that needs to be executed when the app starts here
+        // For example: initializing models, checking storage permissions, etc.
       } catch (error) {
         console.error('Application initialization failed:', error);
       } finally {
@@ -45,14 +45,13 @@ export default function App() {
   }, []);
 
   if (!isReady) {
-    // 可以在这里显示加载屏幕
+    // You can display a loading screen here
     return null;
   }
 
   return (
     <SafeAreaProvider>
       <PaperProvider>
-
         <SettingsProvider>
           <ModelProvider>
             <NavigationContainer>
@@ -65,12 +64,12 @@ export default function App() {
                 <Stack.Screen
                   name="Chat"
                   component={ChatScreen}
-                  options={{title: '聊天'}}
+                  options={{title: 'Chat'}}
                 />
                 <Stack.Screen
                   name="ModelManagement"
                   component={ModelManagementScreen}
-                  options={{title: '模型管理'}}
+                  options={{title: 'Model Management'}}
                 />
                 <Stack.Screen
                   name="Settings"

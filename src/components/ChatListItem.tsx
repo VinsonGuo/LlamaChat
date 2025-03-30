@@ -10,52 +10,52 @@ interface ChatListItemProps {
   onDeleteChat: (chatId: string) => void;
 }
 
-// 获取聊天的首字母作为头像
+// Get the first letter of the chat title as an avatar
 const getInitials = (title: string) => {
   return title.charAt(0).toUpperCase();
 };
 
-// 为模型名称生成稳定的颜色，基于名称的哈希值
+// Generate a stable color for the model name, based on the hash value of the name
 const getModelColor = (modelName: string) => {
-  // 科技感但不夸张的颜色数组
+  // Tech-inspired but not exaggerated color array
   const colors = [
-    '#3498db',  // 蓝色
-    '#2ecc71',  // 绿色
-    '#9b59b6',  // 紫色
-    '#1abc9c',  // 青绿色
-    '#e74c3c',  // 红色
-    '#f39c12',  // 橙色
-    '#34495e',  // 深蓝灰色
-    '#16a085',  // 深青色
-    '#d35400',  // 深橙色
-    '#8e44ad',  // 深紫色
-    '#27ae60',  // 深绿色
-    '#2980b9',  // 深蓝色
-    '#c0392b',  // 深红色
-    '#7f8c8d'   // 灰色
+    '#3498db',  // Blue
+    '#2ecc71',  // Green
+    '#9b59b6',  // Purple
+    '#1abc9c',  // Teal
+    '#e74c3c',  // Red
+    '#f39c12',  // Orange
+    '#34495e',  // Dark blue-gray
+    '#16a085',  // Dark teal
+    '#d35400',  // Dark orange
+    '#8e44ad',  // Dark purple
+    '#27ae60',  // Dark green
+    '#2980b9',  // Dark blue
+    '#c0392b',  // Dark red
+    '#7f8c8d'   // Gray
   ];
 
-  // 简单的哈希函数，将模型名称映射到一个数字
+  // Simple hash function to map model name to a number
   let hash = 0;
   for (let i = 0; i < modelName.length; i++) {
-    // 使用字符编码生成哈希值
+    // Generate hash value using character code
     hash = ((hash << 5) - hash) + modelName.charCodeAt(i);
-    hash |= 0; // 转换为32位整数
+    hash |= 0; // Convert to 32-bit integer
   }
 
-  // 取绝对值，然后对颜色数组的长度取模，确保它在数组范围内
+  // Take the absolute value, then modulo by the length of the colors array to ensure it's within range
   const colorIndex = Math.abs(hash) % colors.length;
 
   return colors[colorIndex];
 };
-// 生成头像背景和边框样式 - 更柔和的颜色
+// Generate avatar background and border style - softer colors
 const getAvatarStyle = (modelName: string) => {
   const baseColor = getModelColor(modelName);
 
   return {
-    backgroundColor: '#f5f6fa',  // 浅灰色背景，更柔和
-    color: baseColor,  // 文字颜色仍使用模型颜色
-    borderColor: baseColor + '40'  // 添加透明度的边框
+    backgroundColor: '#f5f6fa',  // Light gray background, softer
+    color: baseColor,  // Text color still uses model color
+    borderColor: baseColor + '40'  // Border with transparency
   };
 };
 
@@ -64,38 +64,38 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
   const modelColor = getModelColor(item.modelName);
   const avatarStyle = getAvatarStyle(item.modelName);
 
-  // 确保暗色模式下有正确的卡片背景色
+  // Ensure correct card background color in dark mode
   const cardBackgroundColor = theme.dark ? '#1e272e' : '#ffffff';
   const cardBorderColor = theme.dark ? '#2a3f54' : '#e0e0e0';
   const textColor = theme.dark ? '#f5f6fa' : '#2d3436';
   const secondaryTextColor = theme.dark ? '#b2bec3' : '#636e72';
 
-  // 格式化日期
+  // Format date
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
 
-    // 如果是今天
+    // If today
     if (date.toDateString() === now.toDateString()) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    // 如果是昨天
+    // If yesterday
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
-      return '昨天';
+      return 'Yesterday';
     }
 
-    // 如果是本周
+    // If this week
     const weekDiff = Math.round((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000));
     if (weekDiff < 7) {
-      const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       return days[date.getDay()];
     }
 
-    // 其他情况显示完整日期
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
+    // For other cases show the full date
+    return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
   const lastMessage = item.messages && item.messages.length > 0
@@ -106,7 +106,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
     if (lastMessage && lastMessage.content) {
       return lastMessage.content.trim();
     }
-    return '新建的对话';
+    return 'New conversation';
   };
 
   return (
@@ -125,10 +125,10 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
         onPress={() => onOpenChat(item)}
         activeOpacity={0.7}
       >
-        {/* 第一行：头像和标题与时间 */}
+        {/* First row: Avatar and title with time */}
         <View style={styles.headerRow}>
 
-          {/* 标题 */}
+          {/* Title */}
           <View style={styles.titleContainer}>
             <Text
               variant="titleMedium"
@@ -142,7 +142,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
             </Text>
           </View>
 
-          {/* 时间 - 移至最右侧 */}
+          {/* Time - moved to the far right */}
           <Text
             variant="bodySmall"
             style={[
@@ -154,7 +154,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
           </Text>
         </View>
 
-        {/* 第二行：预览文本 */}
+        {/* Second row: Preview text */}
         <View style={styles.previewContainer}>
           <Text
             style={[
@@ -167,15 +167,15 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
           </Text>
         </View>
 
-        {/* 分隔线 */}
+        {/* Divider */}
         <Divider style={[
           styles.divider,
           { backgroundColor: theme.dark ? '#3d4852' : '#ecf0f1' }
         ]} />
 
-        {/* 第三行：模型标签和操作按钮 */}
+        {/* Third row: Model label and action buttons */}
         <View style={styles.footerRow}>
-          {/* 模型标签 */}
+          {/* Model label */}
           <View style={[
             styles.modelBadge,
             {
@@ -193,7 +193,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
             </Text>
           </View>
 
-          {/* 操作按钮 */}
+          {/* Action buttons */}
           <View style={styles.actionButtons}>
             <IconButton
               icon="pencil-outline"
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     width: 40,
     height: 40,
-    borderRadius: 8,  // 方形圆角
+    borderRadius: 8,  // Rounded square
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
