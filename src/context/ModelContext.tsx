@@ -21,6 +21,8 @@ interface ModelContext {
   generateResponse: (messages: any[], onToken: (token: string) => void, abortSignal?: AbortController) => Promise<string>;
   downloadModel: (url: string, modelName: string,
                   progressCallback: (progress: number) => void) => Promise<void>;
+  importModel: (sourceUri: string, modelName: string,
+                  progressCallback: (progress: number) => void) => Promise<void>;
   deleteModel: (modelName: string)=> Promise<void>
   modelInfo: any | null;
 }
@@ -251,6 +253,75 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
     }
   };
 
+  const importModel = async (
+    sourceUri: string,
+    modelName: string,
+    progressCallback: (progress: number) => void)
+    : Promise<void> => {
+    try {
+      // Prepare destination path
+      const modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
+      const destPath = `${modelsDir}/${modelName}.gguf`;
+
+      // Ensure models directory exists
+      const dirExists = await RNFS.exists(modelsDir);
+      if (!dirExists) {
+        await RNFS.mkdir(modelsDir);
+      }
+
+      console.log('Source URI:', sourceUri);
+      console.log('Destination path:', destPath);
+
+      try {
+        const fileInfo = await RNFS.stat(sourceUri);
+        const totalSize = fileInfo.size;
+        console.log('Source file size:', totalSize);
+
+        // 使用copyFile函数复制文件
+        const copyJob = RNFS.copyFile(sourceUri, destPath);
+
+        // 手动设置进度更新的间隔
+        const progressInterval = setInterval(async () => {
+          try {
+            if (await RNFS.exists(destPath)) {
+              const currentFileInfo = await RNFS.stat(destPath);
+              const progressPercentage = (currentFileInfo.size / totalSize) * 100;
+              progressCallback(Math.min(progressPercentage, 99)); // 最多显示99%，直到完成
+              console.log('Import progress:', progressPercentage.toFixed(2) + '%');
+            }
+          } catch (e) {
+            console.log('Progress check error:', e);
+            // 如果文件还不存在，忽略错误
+          }
+        }, 500); // 每500毫秒检查一次
+
+        // 等待复制完成
+        await copyJob;
+        clearInterval(progressInterval);
+        progressCallback(100);
+
+        // Add file to model list using the downloadModel function which will update the UI
+        const modelPath = `file://${destPath}`;
+        const newModel = {
+          name: modelName,
+          path: modelPath,  // Note: adding file:// prefix here
+        };
+
+        setAvailableModels(prevModels => [...prevModels, newModel]);
+
+        Alert.alert('Success', `Model "${modelName}" has been imported successfully`);
+      } catch (statError) {
+        console.error('Error getting source file information:', statError);
+        Alert.alert('Error', 'Failed to access source file information');
+      }
+    } catch (error) {
+      console.error('Error copying model file:', error);
+      Alert.alert('Error', 'Failed to import model file');
+    } finally {
+      progressCallback(0);
+    }
+  };
+
   const deleteModel = async (modelName: string): Promise<void> => {
     try {
       const modelPath = `${RNFS.DocumentDirectoryPath}/models/${modelName}.gguf`;
@@ -305,6 +376,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
         loadModel,
         generateResponse,
         downloadModel,
+        importModel,
         modelInfo,
         deleteModel,
       }}

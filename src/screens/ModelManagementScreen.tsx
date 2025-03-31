@@ -1,6 +1,6 @@
 import React, {useState} from 'react';
-import {ActivityIndicator, Alert, ScrollView, StyleSheet, View,} from 'react-native';
-import {Button, Card, Dialog, Divider, IconButton, List, Portal, Text, TextInput,} from 'react-native-paper';
+import {ActivityIndicator, Alert, ScrollView, StyleSheet, View} from 'react-native';
+import {Button, Card, Dialog, Divider, List, Portal, Text, TextInput, IconButton} from 'react-native-paper';
 import {useModel} from '../context/ModelContext';
 import DocumentPicker from 'react-native-document-picker';
 import * as RNFS from 'react-native-fs';
@@ -59,12 +59,11 @@ const ModelManagementScreen = () => {
     isModelLoaded,
     loadModel,
     downloadModel,
+    importModel,
     deleteModel,
     modelInfo,
   } = useModel();
 
-  const [customUrl, setCustomUrl] = useState('');
-  const [customName, setCustomName] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
@@ -79,25 +78,6 @@ const ModelManagementScreen = () => {
     } catch (error) {
       console.error('Failed to load model:', error);
       Alert.alert('Error', 'Failed to load model');
-    }
-  };
-
-  const handleCustomDownload = async () => {
-    if (!customUrl.trim() || !customName.trim()) {
-      Alert.alert('Error', 'Please enter a valid URL and model name');
-      return;
-    }
-
-    try {
-      setIsDownloading(true);
-      await downloadModel(customUrl.trim(), customName.trim(), (progress) => setDownloadProgress(progress));
-      setCustomUrl('');
-      setCustomName('');
-    } catch (error) {
-      console.error('Failed to download model:', error);
-      Alert.alert('Error', 'Failed to download model');
-    } finally {
-      setIsDownloading(false);
     }
   };
 
@@ -124,7 +104,7 @@ const ModelManagementScreen = () => {
       'Delete Model',
       `Are you sure you want to delete model "${modelName}"${isCurrentModel ? ' (currently loaded)' : ''}?`,
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -142,22 +122,24 @@ const ModelManagementScreen = () => {
     );
   };
 
-  // New function to import model from file
+  // Import model from file
   const importModelFromFile = async () => {
     try {
       // Select a single file
+      setIsImporting(true);
       const result = await DocumentPicker.pickSingle({
         type: [DocumentPicker.types.allFiles],
-        copyTo: 'cachesDirectory',
+        copyTo: 'cachesDirectory'
       });
+
+      console.log('Selected file:', result);
 
       // Check if it's a GGUF file
       if (!result.name?.toLowerCase().endsWith('.gguf')) {
         Alert.alert('Invalid File', 'Please select a valid GGUF model file');
+        setIsImporting(false);
         return;
       }
-
-      setIsImporting(true);
 
       // Get file name without extension for model name
       const modelName = result.name.replace('.gguf', '');
@@ -169,17 +151,26 @@ const ModelManagementScreen = () => {
           'Model Already Exists',
           `A model named "${modelName}" already exists. Do you want to overwrite it?`,
           [
-            {text: 'Cancel', style: 'cancel', onPress: () => setIsImporting(false)},
+            { text: 'Cancel', style: 'cancel', onPress: () => setIsImporting(false) },
             {
               text: 'Overwrite',
               style: 'destructive',
-              onPress: () => copyModelFile(result.uri, modelName)
+              onPress: async () => {
+                setIsImporting(true);
+                await importModel(result.fileCopyUri!, modelName, (progress) => {
+                  setImportProgress(Math.min(progress, 99));
+                  console.log('Import progress:', progress.toFixed(2) + '%');
+                })
+                setIsImporting(false);
+              }
             }
           ]
         );
       } else {
-        // Copy the file to models directory
-        await copyModelFile(result.uri, modelName);
+        await importModel(result.fileCopyUri!, modelName, (progress) => {
+          setImportProgress(Math.min(progress, 99));
+          console.log('Import progress:', progress.toFixed(2) + '%');
+        })
       }
     } catch (err) {
       if (DocumentPicker.isCancel(err)) {
@@ -189,68 +180,12 @@ const ModelManagementScreen = () => {
         console.error('Error picking file:', err);
         Alert.alert('Error', 'Failed to pick file');
       }
-      setIsImporting(false);
-    }
-  };
-
-  const copyModelFile = async (sourceUri: string, modelName: string) => {
-    try {
-      // Prepare destination path
-      const modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
-      const destPath = `${modelsDir}/${modelName}.gguf`;
-
-      // Ensure models directory exists
-      const dirExists = await RNFS.exists(modelsDir);
-      if (!dirExists) {
-        await RNFS.mkdir(modelsDir);
-      }
-
-      // If the source URI starts with 'file://', keep it as is
-      const normalizedSourceUri = sourceUri.startsWith('file://')
-        ? sourceUri
-        : `file://${sourceUri}`;
-
-      // Get file size for progress tracking
-      const fileInfo = await RNFS.stat(normalizedSourceUri);
-      const totalSize = fileInfo.size;
-
-      // 使用jobId来跟踪复制进度
-      const copyJob = RNFS.copyFile(normalizedSourceUri, destPath);
-
-      // 手动设置进度更新的间隔
-      const progressInterval = setInterval(async () => {
-        try {
-          if (await RNFS.exists(destPath)) {
-            const currentFileInfo = await RNFS.stat(destPath);
-            const progressPercentage = (currentFileInfo.size / totalSize) * 100;
-            setImportProgress(Math.min(progressPercentage, 99)); // 最多显示99%，直到完成
-          }
-        } catch (e) {
-        }
-      }, 500);
-
-      // 等待复制完成
-      await copyJob;
-      clearInterval(progressInterval);
-      setImportProgress(100);
-
-      // Add file to model list using the downloadModel function which will update the UI
-      // We're using a dummy URL as we're not actually downloading
-      await downloadModel('file://' + destPath, modelName, (progress) => {
-        // Progress is already handled above
-      });
-
-      Alert.alert('Success', `Model "${modelName}" has been imported successfully`);
-    } catch (error) {
-      console.error('Error copying model file:', error);
-      Alert.alert('Error', 'Failed to import model file');
     } finally {
       setIsImporting(false);
-      setImportProgress(0);
     }
   };
 
-  // Modify the PRESET_MODELS mapping to show either Download or Delete button
+  // Check if model is downloaded
   const isModelDownloaded = (modelName: string) => {
     return availableModels.some(model => model.name === modelName);
   };
@@ -260,6 +195,52 @@ const ModelManagementScreen = () => {
     setShowPresetDialog(true);
   };
 
+  // Render model action buttons (icon only)
+  const renderModelActions = (model: any, isCurrentlyLoaded: boolean) => (
+    <View style={styles.actionButtonsContainer}>
+      <IconButton
+        icon={isCurrentlyLoaded ? "check-circle" : "play-circle-outline"}
+        iconColor={isCurrentlyLoaded ? "#4CAF50" : "#2196F3"}
+        size={24}
+        onPress={() => handleLoadModel(model.path)}
+        disabled={isCurrentlyLoaded}
+        style={styles.iconButton}
+      />
+      <IconButton
+        icon="delete-outline"
+        iconColor="#d63031"
+        size={24}
+        onPress={() => handleDeleteModel(model.name)}
+        style={styles.iconButton}
+      />
+    </View>
+  );
+
+  // Render preset model actions (icon only)
+  const renderPresetActions = (preset: typeof PRESET_MODELS[0], isDownloaded: boolean) => (
+    <View style={styles.actionButtonsContainer}>
+      {isDownloaded ? (
+        <IconButton
+          icon="delete-outline"
+          iconColor="#d63031"
+          size={24}
+          onPress={() => handleDeleteModel(preset.name)}
+          disabled={isDownloading || isImporting}
+          style={styles.iconButton}
+        />
+      ) : (
+        <IconButton
+          icon="download-outline"
+          iconColor="#2196F3"
+          size={24}
+          onPress={() => openPresetDialog(preset)}
+          disabled={isDownloading || isImporting}
+          style={styles.iconButton}
+        />
+      )}
+    </View>
+  );
+
   return (
     <ScrollView style={styles.container}>
       <Card style={styles.section}>
@@ -267,22 +248,70 @@ const ModelManagementScreen = () => {
         <Card.Content>
           {selectedModel ? (
             <View>
-              <Text>Name: {selectedModel.name}</Text>
-              <Text>Status: {isModelLoaded ? 'Loaded' : 'Not Loaded'}</Text>
+              <Text style={styles.modelName}>Name: {selectedModel.name}</Text>
+              <Text style={styles.modelStatus}>Status: {isModelLoaded ? 'Loaded' : 'Not Loaded'}</Text>
 
               {modelInfo && (
                 <View style={styles.modelInfoSection}>
                   <Text style={styles.sectionTitle}>Model Details:</Text>
                   <Text>Architecture: {modelInfo['general.architecture'] || 'Unknown'}</Text>
                   {modelInfo.vocab_size && <Text>Vocabulary Size: {modelInfo.vocab_size}</Text>}
-                  {modelInfo['llama.context_length'] &&
-                    <Text>Max Context: {modelInfo['llama.context_length']} tokens</Text>}
+                  {modelInfo['llama.context_length'] && <Text>Max Context: {modelInfo['llama.context_length']} tokens</Text>}
                 </View>
               )}
             </View>
           ) : (
             <Text>No model selected</Text>
           )}
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.section}>
+        <Card.Title title="Available Models"/>
+        <Card.Content>
+          {availableModels.length === 0 ? (
+            <Text>No available models, please download or import a model</Text>
+          ) : (
+            availableModels.map((model) => (
+              <View key={model.path}>
+                <List.Item
+                  title={() => <Text style={styles.modelListTitle}>{model.name}</Text>}
+                  titleNumberOfLines={2}
+                  style={styles.modelListItem}
+                  right={() => renderModelActions(
+                    model,
+                    isModelLoaded && selectedModel?.path === model.path
+                  )}
+                />
+                <Divider style={styles.divider}/>
+              </View>
+            ))
+          )}
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.section}>
+        <Card.Title title="Preset Models"/>
+        <Card.Content>
+          {PRESET_MODELS.map((preset) => {
+            const downloaded = isModelDownloaded(preset.name);
+            return (
+              <View key={preset.name}>
+                <List.Item
+                  title={() => <Text style={styles.modelListTitle}>{preset.name}</Text>}
+                  description={() => (
+                    <Text style={styles.presetDescription}>
+                      {preset.description} ({preset.size})
+                    </Text>
+                  )}
+                  descriptionNumberOfLines={2}
+                  style={styles.modelListItem}
+                  right={() => renderPresetActions(preset, downloaded)}
+                />
+                <Divider style={styles.divider}/>
+              </View>
+            );
+          })}
         </Card.Content>
       </Card>
 
@@ -320,115 +349,6 @@ const ModelManagementScreen = () => {
         </Card.Content>
       </Card>
 
-      <Card style={styles.section}>
-        <Card.Title title="Available Models"/>
-        <Card.Content>
-          {availableModels.length === 0 ? (
-            <Text>No available models, please download or import a model</Text>
-          ) : (
-            availableModels.map((model) => (
-              <View key={model.path}>
-                <List.Item
-                  title={model.name}
-                  titleNumberOfLines={2}
-                  contentStyle={{paddingRight: 0}}
-                  right={() => (
-                    <View style={styles.itemButtonContainer}>
-                      <Button
-                        mode="contained-tonal"
-                        onPress={() => handleLoadModel(model.path)}
-                        disabled={isModelLoaded && selectedModel?.path === model.path}
-                        style={styles.actionButton}
-                      >
-                        {isModelLoaded && selectedModel?.path === model.path ? 'Loaded' : 'Load'}
-                      </Button>
-                      <IconButton
-                        icon={'delete'}
-                        onPress={() => handleDeleteModel(model.name)}
-                        iconColor="#d63031"
-                        style={[styles.actionButton, styles.deleteButton]}
-                        disabled={isDownloading || isImporting}
-                      >
-                      </IconButton>
-                    </View>
-                  )}
-                />
-                <Divider/>
-              </View>
-            ))
-          )}
-        </Card.Content>
-      </Card>
-
-      <Card style={styles.section}>
-        <Card.Title title="Preset Models"/>
-        <Card.Content>
-          {PRESET_MODELS.map((preset) => {
-            const downloaded = isModelDownloaded(preset.name);
-            return (
-              <View key={preset.name}>
-                <List.Item
-                  title={preset.name}
-                  description={`${preset.description} (${preset.size})`}
-                  descriptionNumberOfLines={5}
-                  right={() => (
-                    <View style={styles.itemButtonContainer}>
-                      {downloaded ? (
-                        <Button
-                          mode="contained-tonal"
-                          onPress={() => handleDeleteModel(preset.name)}
-                          textColor="#d63031"
-                          disabled={isDownloading || isImporting}
-                        >
-                          Delete
-                        </Button>
-                      ) : (
-                        <Button
-                          mode="contained-tonal"
-                          onPress={() => openPresetDialog(preset)}
-                          disabled={isDownloading || isImporting}
-                        >
-                          Download
-                        </Button>
-                      )}
-                    </View>
-                  )}
-                />
-                <Divider/>
-              </View>
-            );
-          })}
-        </Card.Content>
-      </Card>
-
-      <Card style={styles.section}>
-        <Card.Title title="Custom Download"/>
-        <Card.Content>
-          <TextInput
-            label="Model Name"
-            value={customName}
-            onChangeText={setCustomName}
-            style={styles.input}
-            disabled={isDownloading || isImporting}
-          />
-          <TextInput
-            label="GGUF Model URL"
-            value={customUrl}
-            onChangeText={setCustomUrl}
-            style={styles.input}
-            disabled={isDownloading || isImporting}
-          />
-          <Button
-            mode="contained"
-            onPress={handleCustomDownload}
-            disabled={isDownloading || isImporting || !customUrl.trim() || !customName.trim()}
-            style={styles.downloadButton}
-          >
-            {isDownloading ? 'Downloading...' : 'Download Model'}
-          </Button>
-        </Card.Content>
-      </Card>
-
       <Portal>
         <Dialog visible={isDownloading} dismissable={false}>
           <Dialog.Title>Download Progress</Dialog.Title>
@@ -462,8 +382,7 @@ const ModelManagementScreen = () => {
                 <Text style={styles.dialogText}>Description: {selectedPreset.description}</Text>
                 <Text style={styles.dialogText}>Size: {selectedPreset.size}</Text>
                 <Text style={styles.dialogWarning}>
-                  Note: Please ensure you have enough storage space and a stable network connection. Do not close the
-                  app during download.
+                  Note: Please ensure you have enough storage space and a stable network connection. Do not close the app during download.
                 </Text>
               </View>
             )}
@@ -486,12 +405,32 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  modelName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  modelStatus: {
+    fontSize: 15,
+    marginBottom: 8,
   },
   input: {
     marginBottom: 12,
+    backgroundColor: '#fff',
   },
-  downloadButton: {
-    marginTop: 8,
+  customDownloadButtonContainer: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  customDownloadButton: {
+    backgroundColor: '#2196F3',
+    margin: 0,
+    borderRadius: 30,
+    width: 48,
+    height: 48,
   },
   downloadingContainer: {
     alignItems: 'center',
@@ -510,29 +449,29 @@ const styles = StyleSheet.create({
   },
   modelInfoSection: {
     marginTop: 12,
-    padding: 8,
+    padding: 12,
     backgroundColor: '#e0e0e0',
-    borderRadius: 4,
+    borderRadius: 8,
   },
   sectionTitle: {
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 6,
+    fontSize: 15,
   },
-  itemButtonContainer: {
+  actionButtonsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
-  actionButton: {
-    marginHorizontal: 4,
-  },
-  deleteButton: {
-    borderColor: '#d63031',
+  iconButton: {
+    margin: 0,
+    marginHorizontal: 2,
   },
   progressBarContainer: {
     width: '100%',
-    height: 20,
+    height: 12,
     backgroundColor: '#e0e0e0',
-    borderRadius: 10,
+    borderRadius: 6,
     marginVertical: 16,
     overflow: 'hidden',
   },
@@ -546,6 +485,7 @@ const styles = StyleSheet.create({
   description: {
     marginBottom: 12,
     color: '#555',
+    textAlign: 'center',
   },
   progressContainer: {
     marginTop: 16,
@@ -553,6 +493,22 @@ const styles = StyleSheet.create({
   progressText: {
     textAlign: 'center',
     marginBottom: 8,
+  },
+  modelListItem: {
+    paddingVertical: 8,
+  },
+  modelListTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  presetDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
   },
 });
 
