@@ -1,7 +1,9 @@
 import React, {useState} from 'react';
 import {ActivityIndicator, Alert, ScrollView, StyleSheet, View,} from 'react-native';
-import {Button, Card, Dialog, Divider, List, Portal, Text, TextInput,} from 'react-native-paper';
+import {Button, Card, Dialog, Divider, IconButton, List, Portal, Text, TextInput,} from 'react-native-paper';
 import {useModel} from '../context/ModelContext';
+import DocumentPicker from 'react-native-document-picker';
+import * as RNFS from 'react-native-fs';
 
 // Preset model list
 const PRESET_MODELS = [
@@ -67,6 +69,8 @@ const ModelManagementScreen = () => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showPresetDialog, setShowPresetDialog] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<typeof PRESET_MODELS[0] | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
 
   const handleLoadModel = async (modelPath: string) => {
     try {
@@ -120,7 +124,7 @@ const ModelManagementScreen = () => {
       'Delete Model',
       `Are you sure you want to delete model "${modelName}"${isCurrentModel ? ' (currently loaded)' : ''}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Delete',
           style: 'destructive',
@@ -136,6 +140,114 @@ const ModelManagementScreen = () => {
         }
       ]
     );
+  };
+
+  // New function to import model from file
+  const importModelFromFile = async () => {
+    try {
+      // Select a single file
+      const result = await DocumentPicker.pickSingle({
+        type: [DocumentPicker.types.allFiles],
+        copyTo: 'cachesDirectory',
+      });
+
+      // Check if it's a GGUF file
+      if (!result.name?.toLowerCase().endsWith('.gguf')) {
+        Alert.alert('Invalid File', 'Please select a valid GGUF model file');
+        return;
+      }
+
+      setIsImporting(true);
+
+      // Get file name without extension for model name
+      const modelName = result.name.replace('.gguf', '');
+
+      // Check if model with this name already exists
+      const modelExists = availableModels.some(model => model.name === modelName);
+      if (modelExists) {
+        Alert.alert(
+          'Model Already Exists',
+          `A model named "${modelName}" already exists. Do you want to overwrite it?`,
+          [
+            {text: 'Cancel', style: 'cancel', onPress: () => setIsImporting(false)},
+            {
+              text: 'Overwrite',
+              style: 'destructive',
+              onPress: () => copyModelFile(result.uri, modelName)
+            }
+          ]
+        );
+      } else {
+        // Copy the file to models directory
+        await copyModelFile(result.uri, modelName);
+      }
+    } catch (err) {
+      if (DocumentPicker.isCancel(err)) {
+        // User cancelled the picker
+        console.log('User cancelled file picker');
+      } else {
+        console.error('Error picking file:', err);
+        Alert.alert('Error', 'Failed to pick file');
+      }
+      setIsImporting(false);
+    }
+  };
+
+  const copyModelFile = async (sourceUri: string, modelName: string) => {
+    try {
+      // Prepare destination path
+      const modelsDir = `${RNFS.DocumentDirectoryPath}/models`;
+      const destPath = `${modelsDir}/${modelName}.gguf`;
+
+      // Ensure models directory exists
+      const dirExists = await RNFS.exists(modelsDir);
+      if (!dirExists) {
+        await RNFS.mkdir(modelsDir);
+      }
+
+      // If the source URI starts with 'file://', keep it as is
+      const normalizedSourceUri = sourceUri.startsWith('file://')
+        ? sourceUri
+        : `file://${sourceUri}`;
+
+      // Get file size for progress tracking
+      const fileInfo = await RNFS.stat(normalizedSourceUri);
+      const totalSize = fileInfo.size;
+
+      // 使用jobId来跟踪复制进度
+      const copyJob = RNFS.copyFile(normalizedSourceUri, destPath);
+
+      // 手动设置进度更新的间隔
+      const progressInterval = setInterval(async () => {
+        try {
+          if (await RNFS.exists(destPath)) {
+            const currentFileInfo = await RNFS.stat(destPath);
+            const progressPercentage = (currentFileInfo.size / totalSize) * 100;
+            setImportProgress(Math.min(progressPercentage, 99)); // 最多显示99%，直到完成
+          }
+        } catch (e) {
+        }
+      }, 500);
+
+      // 等待复制完成
+      await copyJob;
+      clearInterval(progressInterval);
+      setImportProgress(100);
+
+      // Add file to model list using the downloadModel function which will update the UI
+      // We're using a dummy URL as we're not actually downloading
+      await downloadModel('file://' + destPath, modelName, (progress) => {
+        // Progress is already handled above
+      });
+
+      Alert.alert('Success', `Model "${modelName}" has been imported successfully`);
+    } catch (error) {
+      console.error('Error copying model file:', error);
+      Alert.alert('Error', 'Failed to import model file');
+    } finally {
+      setIsImporting(false);
+      setImportProgress(0);
+    }
   };
 
   // Modify the PRESET_MODELS mapping to show either Download or Delete button
@@ -163,7 +275,8 @@ const ModelManagementScreen = () => {
                   <Text style={styles.sectionTitle}>Model Details:</Text>
                   <Text>Architecture: {modelInfo['general.architecture'] || 'Unknown'}</Text>
                   {modelInfo.vocab_size && <Text>Vocabulary Size: {modelInfo.vocab_size}</Text>}
-                  {modelInfo['llama.context_length'] && <Text>Max Context: {modelInfo['llama.context_length']} tokens</Text>}
+                  {modelInfo['llama.context_length'] &&
+                    <Text>Max Context: {modelInfo['llama.context_length']} tokens</Text>}
                 </View>
               )}
             </View>
@@ -174,25 +287,69 @@ const ModelManagementScreen = () => {
       </Card>
 
       <Card style={styles.section}>
+        <Card.Title title="Import Model from File"/>
+        <Card.Content>
+          <Text style={styles.description}>
+            Import a GGUF model file from your device storage
+          </Text>
+          <Button
+            mode="contained"
+            onPress={importModelFromFile}
+            disabled={isImporting || isDownloading}
+            style={styles.importButton}
+            icon="file-import"
+          >
+            Select and Import Model File
+          </Button>
+
+          {isImporting && (
+            <View style={styles.progressContainer}>
+              <Text style={styles.progressText}>
+                Importing model: {importProgress.toFixed(1)}%
+              </Text>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    {width: `${importProgress}%`}
+                  ]}
+                />
+              </View>
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+
+      <Card style={styles.section}>
         <Card.Title title="Available Models"/>
         <Card.Content>
           {availableModels.length === 0 ? (
-            <Text>No available models, please download a model</Text>
+            <Text>No available models, please download or import a model</Text>
           ) : (
             availableModels.map((model) => (
               <View key={model.path}>
                 <List.Item
                   title={model.name}
                   titleNumberOfLines={2}
+                  contentStyle={{paddingRight: 0}}
                   right={() => (
                     <View style={styles.itemButtonContainer}>
                       <Button
                         mode="contained-tonal"
                         onPress={() => handleLoadModel(model.path)}
                         disabled={isModelLoaded && selectedModel?.path === model.path}
+                        style={styles.actionButton}
                       >
                         {isModelLoaded && selectedModel?.path === model.path ? 'Loaded' : 'Load'}
                       </Button>
+                      <IconButton
+                        icon={'delete'}
+                        onPress={() => handleDeleteModel(model.name)}
+                        iconColor="#d63031"
+                        style={[styles.actionButton, styles.deleteButton]}
+                        disabled={isDownloading || isImporting}
+                      >
+                      </IconButton>
                     </View>
                   )}
                 />
@@ -221,7 +378,7 @@ const ModelManagementScreen = () => {
                           mode="contained-tonal"
                           onPress={() => handleDeleteModel(preset.name)}
                           textColor="#d63031"
-                          disabled={isDownloading}
+                          disabled={isDownloading || isImporting}
                         >
                           Delete
                         </Button>
@@ -229,7 +386,7 @@ const ModelManagementScreen = () => {
                         <Button
                           mode="contained-tonal"
                           onPress={() => openPresetDialog(preset)}
-                          disabled={isDownloading}
+                          disabled={isDownloading || isImporting}
                         >
                           Download
                         </Button>
@@ -252,19 +409,19 @@ const ModelManagementScreen = () => {
             value={customName}
             onChangeText={setCustomName}
             style={styles.input}
-            disabled={isDownloading}
+            disabled={isDownloading || isImporting}
           />
           <TextInput
             label="GGUF Model URL"
             value={customUrl}
             onChangeText={setCustomUrl}
             style={styles.input}
-            disabled={isDownloading}
+            disabled={isDownloading || isImporting}
           />
           <Button
             mode="contained"
             onPress={handleCustomDownload}
-            disabled={isDownloading || !customUrl.trim() || !customName.trim()}
+            disabled={isDownloading || isImporting || !customUrl.trim() || !customName.trim()}
             style={styles.downloadButton}
           >
             {isDownloading ? 'Downloading...' : 'Download Model'}
@@ -305,7 +462,8 @@ const ModelManagementScreen = () => {
                 <Text style={styles.dialogText}>Description: {selectedPreset.description}</Text>
                 <Text style={styles.dialogText}>Size: {selectedPreset.size}</Text>
                 <Text style={styles.dialogWarning}>
-                  Note: Please ensure you have enough storage space and a stable network connection. Do not close the app during download.
+                  Note: Please ensure you have enough storage space and a stable network connection. Do not close the
+                  app during download.
                 </Text>
               </View>
             )}
@@ -361,8 +519,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   itemButtonContainer: {
-    marginLeft: 8,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionButton: {
+    marginHorizontal: 4,
+  },
+  deleteButton: {
+    borderColor: '#d63031',
   },
   progressBarContainer: {
     width: '100%',
@@ -375,7 +539,21 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     backgroundColor: '#6200ee',
-  }
+  },
+  importButton: {
+    marginTop: 8,
+  },
+  description: {
+    marginBottom: 12,
+    color: '#555',
+  },
+  progressContainer: {
+    marginTop: 16,
+  },
+  progressText: {
+    textAlign: 'center',
+    marginBottom: 8,
+  },
 });
 
 export default ModelManagementScreen;
