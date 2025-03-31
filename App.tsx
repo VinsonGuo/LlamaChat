@@ -59,7 +59,7 @@ export default function App() {
                 <Stack.Screen
                   name="Home"
                   component={HomeScreen}
-                  options={{title: 'LlamaChat'}}
+                  options={{title: 'Llama Chat'}}
                 />
                 <Stack.Screen
                   name="Chat"
