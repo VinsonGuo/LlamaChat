@@ -1,5 +1,5 @@
 // src/screens/SettingsScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useLayoutEffect} from 'react';
 import { ScrollView, StyleSheet, View, Platform } from 'react-native';
 import { Button, Card, Divider, HelperText, TextInput, Text } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
@@ -36,7 +36,7 @@ const SettingsScreen = () => {
   });
 
   // Effect to sync inputValues with settings when settings change
-  useEffect(() => {
+  useLayoutEffect(() => {
     setInputValues({
       n_ctx: settings.n_ctx.toString(),
       n_batch: settings.n_batch.toString(),

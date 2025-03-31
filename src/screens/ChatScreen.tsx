@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
   Platform,
@@ -16,6 +17,7 @@ import {Chat, Message} from '../types/chat';
 import {RootStackParamList} from "../types/navigation-types";
 import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
 import {useSettings} from "../context/SettingsContext";
+import Markdown from "../components/Markdown";
 
 
 const ChatScreen = () => {
@@ -31,6 +33,7 @@ const ChatScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const isAtBottomRef = useRef<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +46,24 @@ const ChatScreen = () => {
       stopGeneration()
     }
   }, [chatId]);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      (event) => {
+        console.log('keyboardDidShow', event);
+        setTimeout(() => {
+          if (isAtBottomRef.current) {
+            flatListRef.current?.scrollToEnd({animated: true});
+          }
+        }, 100);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const loadChat = () => {
     const loadedChat = getChat(chatId);
@@ -114,6 +135,9 @@ const ChatScreen = () => {
       const response = await generateResponse(formattedMessages, (token) => {
         streamedContent += token;
         streamedCount++;
+        if (streamedCount % 10 !== 0) {
+          return;
+        }
         setChat(prevChat => {
           if (!prevChat) return null;
 
@@ -133,9 +157,11 @@ const ChatScreen = () => {
           } else {
             messages[messages.length - 1] = streamMessage;
           }
-          if (isAtBottom && streamedCount % 5 === 0) {
-            flatListRef.current?.scrollToEnd({animated: true});
-          }
+          setTimeout(() => {
+            if (isAtBottomRef.current) {
+              flatListRef.current?.scrollToEnd({animated: true});
+            }
+          }, 300);
           return {...prevChat, messages};
         });
       }, abortControllerRef.current);
@@ -152,10 +178,10 @@ const ChatScreen = () => {
         };
       });
 
-      if (isAtBottom) {
+      if (isAtBottomRef.current) {
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({animated: true});
-        }, 100);
+        }, 300);
       }
     } catch (error) {
       console.error('Failed to generate response:', error);
@@ -182,8 +208,9 @@ const ChatScreen = () => {
 
     const distanceFromBottom = contentHeight - offsetY - scrollViewHeight;
 
-    const bottom = distanceFromBottom < 40;
+    const bottom = distanceFromBottom < 100;
     setIsAtBottom(bottom);
+    isAtBottomRef.current = bottom;
   };
 
   const MemoizedMessageItem = React.memo(({item}: { item: Message }) => (
@@ -191,7 +218,9 @@ const ChatScreen = () => {
       styles.messageBubble,
       item.role === 'user' ? styles.userMessage : styles.assistantMessage,
     ]}>
-      <Text style={styles.messageText}>{item.content}</Text>
+      {item.role === 'user' ?
+        <Text style={styles.messageText}>{item.content}</Text> :
+        <Markdown>{item.content}</Markdown>}
       <Text style={styles.messageTime}>
         {new Date(item.timestamp).toLocaleTimeString()}
       </Text>
@@ -318,9 +347,10 @@ const styles = StyleSheet.create({
   assistantMessage: {
     alignSelf: 'flex-start',
     backgroundColor: '#ffffff',
+    width: '85%',
   },
   messageText: {
-    fontSize: 16,
+    fontSize: 15,
   },
   messageTime: {
     fontSize: 12,

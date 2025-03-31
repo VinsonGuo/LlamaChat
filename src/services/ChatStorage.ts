@@ -75,7 +75,7 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   // If it's a user message, can update the conversation title based on content
   if (role === 'user' && chat.messages.length <= 2) {
     // Take the first 20 characters of the user's first message as the title
-    chat.title = content.substring(0, 20) + (content.length > 20 ? '...' : '');
+    chat.title = content;
   }
 
   saveChatHistory(history);

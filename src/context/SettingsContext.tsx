@@ -1,9 +1,9 @@
 // src/context/SettingsContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { MMKV } from 'react-native-mmkv';
+import React, {createContext, useContext, useEffect, useState} from 'react';
+import {MMKV} from 'react-native-mmkv';
 
 // Create a storage instance for settings
-const settingsStorage = new MMKV({ id: 'settings' });
+const settingsStorage = new MMKV({id: 'settings'});
 
 interface ModelSettings {
   n_ctx: number;
@@ -38,7 +38,7 @@ interface SettingsContextType {
 // Create context
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
   const [settings, setSettings] = useState<ModelSettings>(DEFAULT_SETTINGS);
 
   // Load settings from storage on initial load
@@ -60,7 +60,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Update settings
   const updateSettings = (newSettings: Partial<ModelSettings>) => {
-    const updatedSettings = { ...settings, ...newSettings };
+    const updatedSettings = {...settings, ...newSettings};
     setSettings(updatedSettings);
     settingsStorage.set('modelSettings', JSON.stringify(updatedSettings));
   };
@@ -72,10 +72,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, resetSettings }}>
-  {children}
-  </SettingsContext.Provider>
-);
+    <SettingsContext.Provider value={{settings, updateSettings, resetSettings}}>
+      {children}
+    </SettingsContext.Provider>
+  );
 };
 
 // Custom hook to use settings

@@ -162,11 +162,6 @@ const ModelManagementScreen = () => {
                 <View style={styles.modelInfoSection}>
                   <Text style={styles.sectionTitle}>Model Details:</Text>
                   <Text>Architecture: {modelInfo['general.architecture'] || 'Unknown'}</Text>
-                  <Text>Parameters: {
-                    modelInfo.n_params ?
-                      `${(modelInfo.n_params / 1000000000).toFixed(2)}B` :
-                      'Unknown'
-                  }</Text>
                   {modelInfo.vocab_size && <Text>Vocabulary Size: {modelInfo.vocab_size}</Text>}
                   {modelInfo['llama.context_length'] && <Text>Max Context: {modelInfo['llama.context_length']} tokens</Text>}
                 </View>
