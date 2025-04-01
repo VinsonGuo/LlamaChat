@@ -53,6 +53,17 @@ export const createChat = (modelName: string): Chat => {
   return newChat;
 };
 
+export const deleteMessage = (chatId: string, messageId: string): void => {
+  const history = getChatHistory();
+  const chat = history.chats[chatId];
+
+  if (!chat) {
+    throw new Error(`Chat with id ${chatId} not found`);
+  }
+  chat.messages = chat.messages.filter(message => message.id !== messageId);
+  saveChatHistory(history);
+}
+
 // Add message to chat session
 export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string): Message => {
   const history = getChatHistory();
@@ -69,7 +80,7 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
     timestamp: Date.now(),
   };
 
-  chat.messages.push(message);
+  chat.messages.unshift(message);
   chat.updatedAt = Date.now();
 
   // If it's a user message, can update the conversation title based on content

@@ -1,23 +1,24 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
-  Platform,
+  Platform, Share,
   StyleSheet,
   View,
 } from 'react-native';
 import {IconButton, Surface, Text, TextInput} from 'react-native-paper';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
-import {addMessage, getChat} from '../services/ChatStorage';
+import {addMessage, getChat, deleteMessage} from '../services/ChatStorage';
 import {Chat, Message} from '../types/chat';
 import {RootStackParamList} from "../types/navigation-types";
 import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
 import {useSettings} from "../context/SettingsContext";
 import Markdown from "../components/Markdown";
+import ContextMenu from "react-native-context-menu-view";
+import Clipboard from '@react-native-clipboard/clipboard';
 
 
 const ChatScreen = () => {
@@ -34,36 +35,19 @@ const ChatScreen = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const isAtBottomRef = useRef<boolean>(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const scrollToBottom = useCallback(() => {
+    flatListRef.current?.scrollToOffset({
+      animated: true,
+      offset: 0,
+    });
+  }, []);
 
   useEffect(() => {
     loadChat();
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({animated: false});
-      setIsLoading(false);
-    }, 300)
     return () => {
       stopGeneration()
     }
   }, [chatId]);
-
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      (event) => {
-        console.log('keyboardDidShow', event);
-        setTimeout(() => {
-          if (isAtBottomRef.current) {
-            flatListRef.current?.scrollToEnd({animated: true});
-          }
-        }, 100);
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-    };
-  }, []);
 
   const loadChat = () => {
     const loadedChat = getChat(chatId);
@@ -94,14 +78,9 @@ const ChatScreen = () => {
       if (!prevChat) return null;
       return {
         ...prevChat,
-        messages: [...prevChat.messages, newUserMessage],
+        messages: [newUserMessage, ...prevChat.messages],
       };
     });
-
-    // Scroll to bottom
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({animated: true});
-    }, 100);
 
     // Generate assistant reply
     setIsGenerating(true);
@@ -116,14 +95,14 @@ const ChatScreen = () => {
 
       // Add history messages to formatted messages
       chat.messages.forEach(msg => {
-        formattedMessages.push({
+        formattedMessages.unshift({
           role: msg.role,
           content: msg.content,
         });
       });
 
       // Add user's latest message
-      formattedMessages.push({
+      formattedMessages.unshift({
         role: 'user',
         content: userMessage,
       });
@@ -142,7 +121,7 @@ const ChatScreen = () => {
           if (!prevChat) return null;
 
           const messages = [...prevChat.messages];
-          const lastMessage = messages[messages.length - 1];
+          const lastMessage = messages[0];
 
           const streamMessage: Message = {
             id: 'streaming_id',
@@ -153,15 +132,10 @@ const ChatScreen = () => {
 
           // Use conditional operator to check the last message
           if (!lastMessage || lastMessage.role === 'user') {
-            messages.push(streamMessage);
+            messages.unshift(streamMessage);
           } else {
-            messages[messages.length - 1] = streamMessage;
+            messages[0] = streamMessage;
           }
-          setTimeout(() => {
-            if (isAtBottomRef.current) {
-              flatListRef.current?.scrollToEnd({animated: true});
-            }
-          }, 300);
           return {...prevChat, messages};
         });
       }, abortControllerRef.current);
@@ -174,15 +148,9 @@ const ChatScreen = () => {
         if (!prevChat) return null;
         return {
           ...prevChat,
-          messages: [...prevChat.messages.filter((e) => e.id !== 'streaming_id'), assistantMessage],
+          messages: [assistantMessage, ...prevChat.messages.filter((e) => e.id !== 'streaming_id')],
         };
       });
-
-      if (isAtBottomRef.current) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({animated: true});
-        }, 300);
-      }
     } catch (error) {
       console.error('Failed to generate response:', error);
       // Handle error, e.g., add error message
@@ -201,29 +169,59 @@ const ChatScreen = () => {
     }
   };
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    const contentHeight = event.nativeEvent.contentSize.height;
-    const scrollViewHeight = event.nativeEvent.layoutMeasurement.height;
+  const handleScroll = React.useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const {contentOffset} = event.nativeEvent;
+    const isAtTop = contentOffset.y <= 0;
+    setIsAtBottom(isAtTop);
+    isAtBottomRef.current = isAtTop;
+  }, []);
 
-    const distanceFromBottom = contentHeight - offsetY - scrollViewHeight;
-
-    const bottom = distanceFromBottom < 100;
-    setIsAtBottom(bottom);
-    isAtBottomRef.current = bottom;
-  };
+  const handleMessageItemContextMenuPress = (item: Message)=>  {
+    return async (event: any) => {
+      switch (event.nativeEvent.index) {
+        case 0:
+          Clipboard.setString(item.content);
+          break
+        case 1:
+          await Share.share({
+            message: item.content,
+          });
+          break
+        case 2:
+          setChat(prevChat => {
+            if (!prevChat) return null;
+            return {
+              ...prevChat,
+              messages: prevChat.messages.filter((e) => e.id !== item.id),
+            };
+          })
+          deleteMessage(chatId, item.id)
+          break
+      }
+    };
+  }
 
   const MemoizedMessageItem = React.memo(({item}: { item: Message }) => (
     <Surface style={[
       styles.messageBubble,
       item.role === 'user' ? styles.userMessage : styles.assistantMessage,
     ]}>
-      {item.role === 'user' ?
-        <Text style={styles.messageText}>{item.content}</Text> :
-        <Markdown>{item.content}</Markdown>}
-      <Text style={styles.messageTime}>
-        {new Date(item.timestamp).toLocaleTimeString()}
-      </Text>
+      <ContextMenu
+        actions={
+          [
+            {title: 'Copy', systemIcon: 'doc.on.doc', disabled: isGenerating},
+            {title: 'Share', systemIcon: 'square.and.arrow.up', disabled: isGenerating},
+            {title: 'Delete', systemIcon: 'trash', destructive: true, disabled: isGenerating}
+          ]
+        }
+        onPress={handleMessageItemContextMenuPress(item)}>
+        {item.role === 'user' ?
+          <Text style={styles.messageText}>{item.content}</Text> :
+          <Markdown>{item.content}</Markdown>}
+        <Text style={styles.messageTime}>
+          {new Date(item.timestamp).toLocaleTimeString()}
+        </Text>
+      </ContextMenu>
     </Surface>
   ), (prevProps, nextProps) => {
     // Only re-render if the message content or ID changes
@@ -249,21 +247,22 @@ const ChatScreen = () => {
     >
       <View style={styles.chatContainer}>
         <FlatList
-          style={{opacity: isLoading ? 0 : 1}}
           ref={flatListRef}
           data={chat.messages}
           renderItem={({item}: { item: Message }) => <MemoizedMessageItem item={item}/>}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
           onScroll={handleScroll}
+          inverted={true}
           scrollEventThrottle={16}
+          keyboardDismissMode="interactive"
         />
         {!isAtBottom && (
           <IconButton
             style={styles.scrollButton}
             icon="chevron-down"
             size={24}
-            onPress={() => flatListRef.current?.scrollToEnd({animated: true})}
+            onPress={() => scrollToBottom()}
           />
         )}
       </View>
