@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     width: '85%',
   },
   messageText: {
-    fontSize: 15,
+    fontSize: 16,
   },
   messageTime: {
     fontSize: 12,
