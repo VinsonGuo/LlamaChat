@@ -3,7 +3,7 @@ import {ActivityIndicator, Alert, ScrollView, StyleSheet, View} from 'react-nati
 import {Button, Card, Dialog, Divider, List, Portal, Text, TextInput, IconButton} from 'react-native-paper';
 import {useModel} from '../context/ModelContext';
 import DocumentPicker from 'react-native-document-picker';
-import * as RNFS from 'react-native-fs';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 // Preset model list
 const PRESET_MODELS = [
@@ -86,6 +86,7 @@ const ModelManagementScreen = () => {
 
     setShowPresetDialog(false);
     try {
+      await activateKeepAwakeAsync('downloadModel');
       setIsDownloading(true);
       await downloadModel(selectedPreset.url, selectedPreset.name, (progress) => setDownloadProgress(progress));
     } catch (error) {
@@ -93,6 +94,7 @@ const ModelManagementScreen = () => {
       Alert.alert('Error', 'Failed to download preset model');
     } finally {
       setIsDownloading(false);
+      await deactivateKeepAwake('downloadModel');
     }
   };
 

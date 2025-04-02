@@ -177,6 +177,7 @@ export const ModelProvider: React.FC<{ children: React.ReactNode }> = ({children
 
     try {
       // Use completion method to generate response
+      console.log('messages', messages);
       const result = await modelContext.completion({
         messages,
         temperature: settings.temperature,

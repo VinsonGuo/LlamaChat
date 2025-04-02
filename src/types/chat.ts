@@ -5,10 +5,14 @@ export interface Message {
   timestamp: number;
 }
 
+export type ChatMode = 'conversation' | 'singleInteractive';
+
 export interface Chat {
   id: string;
   title: string;
   messages: Message[];
+  mode: ChatMode;
+  userPrompt: string;
   createdAt: number;
   updatedAt: number;
   modelName: string;

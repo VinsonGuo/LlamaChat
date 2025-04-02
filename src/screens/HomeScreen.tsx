@@ -1,10 +1,10 @@
-import React, {useCallback, useEffect, useLayoutEffect, useState} from 'react';
-import {ActivityIndicator, Alert, FlatList, StyleSheet, View,} from 'react-native';
-import {Button, Dialog, FAB, IconButton, Portal, Text, TextInput} from 'react-native-paper';
+import React, {useCallback, useLayoutEffect, useState} from 'react';
+import {Alert, FlatList, StyleSheet, View,} from 'react-native';
+import {Button, Dialog, FAB, IconButton, Portal, Text, TextInput, Tooltip} from 'react-native-paper';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
 import {createChat, deleteChat, getChatHistory, setCurrentChat, updateChatTitle} from '../services/ChatStorage';
-import {Chat} from '../types/chat';
+import {Chat, ChatMode} from '../types/chat';
 import {HomeScreenNavigationProp} from "../types/navigation-types";
 import ChatListItem from "../components/ChatListItem";
 import ModelInfoPanel from "../components/ModelInfoPanel";
@@ -18,6 +18,7 @@ const HomeScreen = () => {
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [currentEditChat, setCurrentEditChat] = useState<Chat | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [isFabOpen, setFabOpen] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -49,7 +50,7 @@ const HomeScreen = () => {
     setChats(chatList);
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = (mode: ChatMode) => {
     if (!isModelLoaded) {
       Alert.alert(
         'No Available Model',
@@ -62,15 +63,15 @@ const HomeScreen = () => {
       return;
     }
 
-    const newChat = createChat(selectedModel?.name || 'Unknown Model');
+    const newChat = createChat(selectedModel?.name || 'Unknown Model', mode);
     setRefreshKey(prev => prev + 1);
-    navigation.navigate('Chat', {chatId: newChat.id});
+    navigation.navigate('Chat', {chatId: newChat.id, mode: mode});
   };
 
   const handleOpenChat = (chat: Chat) => {
     if (chat.modelName === selectedModel?.name) {
       setCurrentChat(chat.id);
-      navigation.navigate('Chat', {chatId: chat.id});
+      navigation.navigate('Chat', {chatId: chat.id, mode: chat.mode});
     } else {
       Alert.alert('Target model does not match current model', `Please select ${chat.modelName} model in Model Management page`);
     }
@@ -124,10 +125,17 @@ const HomeScreen = () => {
           <Text>No chat history yet</Text>
           <Button
             mode="contained"
-            onPress={handleNewChat}
+            onPress={() => handleNewChat('conversation')}
             style={styles.newChatButton}
           >
-            Start New Conversation
+            Start New Chat
+          </Button>
+          <Button
+            mode="contained"
+            onPress={() => handleNewChat('singleInteractive')}
+            style={styles.newChatButton}
+          >
+            Start Single Interactive
           </Button>
         </View>
       ) : (
@@ -152,10 +160,24 @@ const HomeScreen = () => {
         />
       )}
 
-      <FAB
+      <FAB.Group
         style={styles.fab}
-        icon="plus"
-        onPress={handleNewChat}
+        open={isFabOpen}
+        visible={true}
+        icon={isFabOpen ? 'close' : 'plus'}
+        actions={[
+          {
+            icon: 'star',
+            label: 'Star',
+            onPress: () => handleNewChat('conversation'),
+          },
+          {
+            icon: 'email',
+            label: 'Email',
+            onPress: () => handleNewChat('singleInteractive'),
+          },
+        ]}
+        onStateChange={({open}) => setFabOpen(open)}
       />
 
       <Portal>

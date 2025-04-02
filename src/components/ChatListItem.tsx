@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, Divider, IconButton, Text, useTheme } from 'react-native-paper';
+import {Card, Divider, Icon, IconButton, Text, useTheme} from 'react-native-paper';
 import { Chat } from "../types/chat";
 
 interface ChatListItemProps {
@@ -128,6 +128,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
         {/* First row: Avatar and title with time */}
         <View style={styles.headerRow}>
 
+          <Icon size={18} source={item.mode === 'conversation' ? 'chat' : 'account'}/>
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text
@@ -142,7 +143,6 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
             </Text>
           </View>
 
-          {/* Time - moved to the far right */}
           <Text
             variant="bodySmall"
             style={[
@@ -255,6 +255,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   titleContainer: {
+    marginLeft: 8,
     flex: 1,
   },
   title: {

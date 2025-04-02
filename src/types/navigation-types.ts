@@ -3,11 +3,12 @@
 
 // src/types/navigation-types.ts
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {ChatMode} from "./chat";
 
 // 定义应用程序中所有屏幕及其参数
 export type RootStackParamList = {
   Home: undefined;
-  Chat: { chatId: string };
+  Chat: { chatId: string, mode: ChatMode };
   ModelManagement: undefined;
   Settings: undefined;
 };

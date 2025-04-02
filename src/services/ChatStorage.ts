@@ -1,5 +1,5 @@
 import {MMKV} from 'react-native-mmkv';
-import {Chat, ChatHistory, Message} from '../types/chat';
+import {Chat, ChatHistory, ChatMode, Message} from '../types/chat';
 
 // Use MMKV as local storage
 const storage = new MMKV();
@@ -32,7 +32,7 @@ export const saveChatHistory = (history: ChatHistory): void => {
 };
 
 // Create new chat session
-export const createChat = (modelName: string): Chat => {
+export const createChat = (modelName: string, mode: ChatMode): Chat => {
   const now = Date.now();
   const chatId = generateId();
 
@@ -40,6 +40,8 @@ export const createChat = (modelName: string): Chat => {
     id: chatId,
     title: `New Conversation ${new Date(now).toLocaleTimeString()}`,
     messages: [],
+    mode,
+    userPrompt: '',
     createdAt: now,
     updatedAt: now,
     modelName,
@@ -65,7 +67,7 @@ export const deleteMessage = (chatId: string, messageId: string): void => {
 }
 
 // Add message to chat session
-export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string): Message => {
+export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string, userPrompt: string): Message => {
   const history = getChatHistory();
   const chat = history.chats[chatId];
 
@@ -87,6 +89,11 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   if (role === 'user' && chat.messages.length <= 2) {
     // Take the first 20 characters of the user's first message as the title
     chat.title = content;
+  }
+
+  if (userPrompt) {
+    chat.userPrompt = userPrompt;
+    chat.title = userPrompt;
   }
 
   saveChatHistory(history);

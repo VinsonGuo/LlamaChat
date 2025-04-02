@@ -4,14 +4,15 @@ import {
   FlatList,
   KeyboardAvoidingView,
   NativeScrollEvent,
-  Platform, Share,
+  Platform,
+  Share,
   StyleSheet,
   View,
 } from 'react-native';
-import {IconButton, Surface, Text, TextInput} from 'react-native-paper';
+import {Button, Dialog, IconButton, Portal, Surface, Text, TextInput} from 'react-native-paper';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
-import {addMessage, getChat, deleteMessage} from '../services/ChatStorage';
+import {addMessage, deleteMessage, getChat} from '../services/ChatStorage';
 import {Chat, Message} from '../types/chat';
 import {RootStackParamList} from "../types/navigation-types";
 import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
@@ -24,17 +25,19 @@ import Clipboard from '@react-native-clipboard/clipboard';
 const ChatScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'Chat'>>();
   const navigation = useNavigation();
-  const {chatId} = route.params;
+  const {chatId, mode} = route.params;
   const {generateResponse, isModelLoaded} = useModel();
   const {settings} = useSettings();
 
   const [chat, setChat] = useState<Chat | null>(null);
   const [inputText, setInputText] = useState('');
+  const [userPrompt, setUserPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const isAtBottomRef = useRef<boolean>(false);
+  const [userPromptDialogVisible, setUserPromptDialogVisible] = useState(false);
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToOffset({
       animated: true,
@@ -53,11 +56,15 @@ const ChatScreen = () => {
     const loadedChat = getChat(chatId);
     if (loadedChat) {
       setChat(loadedChat);
-
+      setUserPrompt(loadedChat.userPrompt);
       // Update navigation bar title
       navigation.setOptions({
         title: loadedChat.title
       });
+
+      if (mode === 'singleInteractive' && !loadedChat.userPrompt) {
+        setUserPromptDialogVisible(true);
+      }
     } else {
       // If chat not found, go back to previous page
       navigation.goBack();
@@ -71,7 +78,7 @@ const ChatScreen = () => {
     setInputText('');
 
     // Add user message
-    const newUserMessage = addMessage(chatId, 'user', userMessage);
+    const newUserMessage = addMessage(chatId, 'user', userMessage, userPrompt);
 
     // Update local state
     setChat(prevChat => {
@@ -93,16 +100,23 @@ const ChatScreen = () => {
         }
       ];
 
-      // Add history messages to formatted messages
-      chat.messages.forEach(msg => {
-        formattedMessages.unshift({
-          role: msg.role,
-          content: msg.content,
+      if (mode === 'conversation') {
+        // Add history messages to formatted messages
+        chat.messages.toReversed().forEach(msg => {
+          formattedMessages.push({
+            role: msg.role,
+            content: msg.content,
+          });
         });
-      });
+      } else {
+        formattedMessages.push({
+          role: 'user',
+          content: userPrompt,
+        })
+      }
 
       // Add user's latest message
-      formattedMessages.unshift({
+      formattedMessages.push({
         role: 'user',
         content: userMessage,
       });
@@ -141,7 +155,7 @@ const ChatScreen = () => {
       }, abortControllerRef.current);
 
       // Add assistant message
-      const assistantMessage = addMessage(chatId, 'assistant', response.trim());
+      const assistantMessage = addMessage(chatId, 'assistant', response.trim(), userPrompt);
 
       // Update local state
       setChat(prevChat => {
@@ -154,7 +168,7 @@ const ChatScreen = () => {
     } catch (error) {
       console.error('Failed to generate response:', error);
       // Handle error, e.g., add error message
-      addMessage(chatId, 'assistant', 'Sorry, an error occurred while generating a response.');
+      addMessage(chatId, 'assistant', 'Sorry, an error occurred while generating a response.', userPrompt);
       loadChat(); // Reload chat to get the latest state
     } finally {
       abortControllerRef.current = null;
@@ -176,7 +190,7 @@ const ChatScreen = () => {
     isAtBottomRef.current = isAtTop;
   }, []);
 
-  const handleMessageItemContextMenuPress = (item: Message)=>  {
+  const handleMessageItemContextMenuPress = (item: Message) => {
     return async (event: any) => {
       switch (event.nativeEvent.index) {
         case 0:
@@ -256,6 +270,13 @@ const ChatScreen = () => {
           inverted={true}
           scrollEventThrottle={16}
           keyboardDismissMode="interactive"
+          maintainVisibleContentPosition={
+            isAtBottom
+              ? undefined
+              : {
+                minIndexForVisible: 1,
+              }
+          }
         />
         {!isAtBottom && (
           <IconButton
@@ -290,6 +311,27 @@ const ChatScreen = () => {
           <Text style={styles.generatingText}>AI is thinking...</Text>
         </View>
       )}
+      <Portal>
+        <Dialog dismissable={false} visible={userPromptDialogVisible}
+                onDismiss={() => setUserPromptDialogVisible(false)}>
+          <Dialog.Title>Edit Instruction</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              value={userPrompt}
+              onChangeText={setUserPrompt}
+              placeholder={'Enter user prompt'}
+              mode="outlined"
+            />
+          </Dialog.Content>
+
+          <Dialog.Actions>
+            <Button onPress={() => navigation.goBack()}>Cancel</Button>
+            <Button disabled={userPrompt.trim().length === 0} onPress={() => {
+              setUserPromptDialogVisible(false);
+            }}>Save</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </KeyboardAvoidingView>
   );
 };
