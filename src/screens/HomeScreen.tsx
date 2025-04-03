@@ -167,13 +167,13 @@ const HomeScreen = () => {
         icon={isFabOpen ? 'close' : 'plus'}
         actions={[
           {
-            icon: 'star',
-            label: 'Star',
+            icon: 'chat-plus',
+            label: 'Start New Chat',
             onPress: () => handleNewChat('conversation'),
           },
           {
-            icon: 'email',
-            label: 'Email',
+            icon: 'comment-plus',
+            label: 'Start Single Interactive',
             onPress: () => handleNewChat('singleInteractive'),
           },
         ]}

@@ -12,7 +12,7 @@ import {
 import {Button, Dialog, IconButton, Portal, Surface, Text, TextInput} from 'react-native-paper';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
-import {addMessage, deleteMessage, getChat} from '../services/ChatStorage';
+import {addMessage, deleteMessage, getChat, updateUserPrompt} from '../services/ChatStorage';
 import {Chat, Message} from '../types/chat';
 import {RootStackParamList} from "../types/navigation-types";
 import {NativeSyntheticEvent} from "react-native/Libraries/Types/CoreEventTypes";
@@ -46,30 +46,32 @@ const ChatScreen = () => {
   }, []);
 
   useEffect(() => {
-    loadChat();
+    const loadedChat = getChat(chatId);
+    if (loadedChat) {
+      setChat(loadedChat);
+    } else {
+      navigation.goBack();
+    }
     return () => {
       stopGeneration()
     }
   }, [chatId]);
 
-  const loadChat = () => {
-    const loadedChat = getChat(chatId);
-    if (loadedChat) {
-      setChat(loadedChat);
-      setUserPrompt(loadedChat.userPrompt);
-      // Update navigation bar title
+  useEffect(() => {
+    if (chat) {
       navigation.setOptions({
-        title: loadedChat.title
+        title: chat.title,
+        headerRight: () => (
+          mode === 'singleInteractive' &&
+          <IconButton icon={'pencil'} onPressOut={() => setUserPromptDialogVisible(true)}/>
+        )
       });
-
-      if (mode === 'singleInteractive' && !loadedChat.userPrompt) {
+      setUserPrompt(chat.userPrompt);
+      if (mode === 'singleInteractive' && !chat.userPrompt) {
         setUserPromptDialogVisible(true);
       }
-    } else {
-      // If chat not found, go back to previous page
-      navigation.goBack();
     }
-  };
+  }, [chat]);
 
   const handleSend = async () => {
     if (!inputText.trim() || !isModelLoaded || !chat) return;
@@ -78,7 +80,7 @@ const ChatScreen = () => {
     setInputText('');
 
     // Add user message
-    const newUserMessage = addMessage(chatId, 'user', userMessage, userPrompt);
+    const newUserMessage = addMessage(chatId, 'user', userMessage);
 
     // Update local state
     setChat(prevChat => {
@@ -111,7 +113,7 @@ const ChatScreen = () => {
       } else {
         formattedMessages.push({
           role: 'user',
-          content: userPrompt,
+          content: chat?.userPrompt,
         })
       }
 
@@ -155,7 +157,7 @@ const ChatScreen = () => {
       }, abortControllerRef.current);
 
       // Add assistant message
-      const assistantMessage = addMessage(chatId, 'assistant', response.trim(), userPrompt);
+      const assistantMessage = addMessage(chatId, 'assistant', response.trim());
 
       // Update local state
       setChat(prevChat => {
@@ -168,8 +170,7 @@ const ChatScreen = () => {
     } catch (error) {
       console.error('Failed to generate response:', error);
       // Handle error, e.g., add error message
-      addMessage(chatId, 'assistant', 'Sorry, an error occurred while generating a response.', userPrompt);
-      loadChat(); // Reload chat to get the latest state
+      addMessage(chatId, 'assistant', 'Sorry, an error occurred while generating a response.');
     } finally {
       abortControllerRef.current = null;
       setIsGenerating(false);
@@ -223,8 +224,8 @@ const ChatScreen = () => {
       <ContextMenu
         actions={
           [
-            {title: 'Copy', systemIcon: 'doc.on.doc', disabled: isGenerating},
-            {title: 'Share', systemIcon: 'square.and.arrow.up', disabled: isGenerating},
+            {title: 'Copy', systemIcon: 'doc.on.doc'},
+            {title: 'Share', systemIcon: 'square.and.arrow.up'},
             {title: 'Delete', systemIcon: 'trash', destructive: true, disabled: isGenerating}
           ]
         }
@@ -325,8 +326,11 @@ const ChatScreen = () => {
           </Dialog.Content>
 
           <Dialog.Actions>
-            <Button onPress={() => navigation.goBack()}>Cancel</Button>
+            <Button
+              onPress={() => chat?.userPrompt ? setUserPromptDialogVisible(false) : navigation.goBack()}>Cancel</Button>
             <Button disabled={userPrompt.trim().length === 0} onPress={() => {
+              const chat = updateUserPrompt(chatId, userPrompt);
+              setChat(chat);
               setUserPromptDialogVisible(false);
             }}>Save</Button>
           </Dialog.Actions>

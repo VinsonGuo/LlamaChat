@@ -128,7 +128,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
         {/* First row: Avatar and title with time */}
         <View style={styles.headerRow}>
 
-          <Icon size={18} source={item.mode === 'conversation' ? 'chat' : 'account'}/>
+          <Icon size={18} source={item.mode === 'conversation' ? 'chat' : 'comment'}/>
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text

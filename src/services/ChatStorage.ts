@@ -66,8 +66,17 @@ export const deleteMessage = (chatId: string, messageId: string): void => {
   saveChatHistory(history);
 }
 
+export const updateUserPrompt = (chatId: string, userPrompt: string): Chat => {
+  const history = getChatHistory();
+  const chat = history.chats[chatId];
+  chat.userPrompt = userPrompt;
+  chat.title = userPrompt;
+  saveChatHistory(history);
+  return chat;
+}
+
 // Add message to chat session
-export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string, userPrompt: string): Message => {
+export const addMessage = (chatId: string, role: 'user' | 'assistant', content: string): Message => {
   const history = getChatHistory();
   const chat = history.chats[chatId];
 
@@ -85,15 +94,8 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   chat.messages.unshift(message);
   chat.updatedAt = Date.now();
 
-  // If it's a user message, can update the conversation title based on content
-  if (role === 'user' && chat.messages.length <= 2) {
-    // Take the first 20 characters of the user's first message as the title
+  if (!chat.title && role === 'user' && chat.messages.length <= 2) {
     chat.title = content;
-  }
-
-  if (userPrompt) {
-    chat.userPrompt = userPrompt;
-    chat.title = userPrompt;
   }
 
   saveChatHistory(history);
