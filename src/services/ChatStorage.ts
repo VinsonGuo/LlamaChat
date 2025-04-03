@@ -94,7 +94,7 @@ export const addMessage = (chatId: string, role: 'user' | 'assistant', content: 
   chat.messages.unshift(message);
   chat.updatedAt = Date.now();
 
-  if (!chat.title && role === 'user' && chat.messages.length <= 2) {
+  if (!chat.userPrompt && role === 'user' && chat.messages.length <= 2) {
     chat.title = content;
   }
 

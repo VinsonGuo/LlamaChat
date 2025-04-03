@@ -8,10 +8,10 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 // Preset model list
 const PRESET_MODELS = [
   {
-    name: 'TinyLlama-1.1B-Chat-v1.0',
-    description: 'Lightweight chat model, suitable for mobile devices',
-    url: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
-    size: '~670MB',
+    name: 'Gemma-2B-GGUF',
+    description: 'Google open-source small model',
+    url: 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
+    size: '~1.6GB',
   },
   {
     name: 'Phi-2-GGUF',
@@ -25,31 +25,30 @@ const PRESET_MODELS = [
     url: 'https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf',
     size: '~4.1GB',
   },
-  // Add the following new models
   {
-    name: 'TinyLlama-1.1B-1T-OpenOrca',
-    description: 'Small model trained on OpenOrca dataset',
-    url: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-1T-OpenOrca-GGUF/resolve/main/tinyllama-1.1b-1t-openorca.Q4_K_M.gguf',
+    name: 'TinyLlama-1.1B-Chat-v1.0',
+    description: 'Lightweight chat model, suitable for mobile devices',
+    url: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
     size: '~670MB',
-  },
-  {
-    name: 'Gemma-2B-GGUF',
-    description: 'Google open-source small model',
-    url: 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
-    size: '~1.6GB',
-  },
-  {
-    name: 'Phi-2-DPO-GGUF',
-    description: 'DPO enhanced version of Microsoft Phi-2',
-    url: 'https://huggingface.co/TheBloke/phi-2-dpo-GGUF/resolve/main/phi-2-dpo.Q4_K_M.gguf',
-    size: '~1.6GB',
   },
   {
     name: 'MythoLogic-Mini-7B',
     description: 'High-performance 7B small inference model',
     url: 'https://huggingface.co/TheBloke/MythoLogic-Mini-7B-GGUF/resolve/main/mythologic-mini-7b.Q4_K_M.gguf',
     size: '~4GB',
-  }
+  },
+  {
+    name: 'DeepSeek-Coder-1.3B-GGUF',
+    description: 'Lightweight code model with powerful code generation capabilities',
+    url: 'https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF/resolve/main/deepseek-coder-1.3b-instruct.Q4_K_M.gguf',
+    size: '~800MB',
+  },
+  {
+    name: 'DeepSeek-LLM-7B-Chat-GGUF',
+    description: 'DeepSeek company\'s 7B bilingual (Chinese-English) chat model, quantized version',
+    url: 'https://huggingface.co/TheBloke/deepseek-llm-7B-chat-GGUF/resolve/main/deepseek-llm-7b-chat.Q4_K_M.gguf',
+    size: '~4GB',
+  },
 ];
 
 const ModelManagementScreen = () => {
