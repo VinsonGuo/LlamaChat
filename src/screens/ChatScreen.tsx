@@ -1,14 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  NativeScrollEvent,
-  Platform,
-  Share,
-  StyleSheet,
-  View,
-} from 'react-native';
+import {ActivityIndicator, FlatList, NativeScrollEvent, Share, StyleSheet, View,} from 'react-native';
 import {Button, Dialog, IconButton, Portal, Surface, Text, TextInput} from 'react-native-paper';
 import {RouteProp, useNavigation, useRoute} from '@react-navigation/native';
 import {useModel} from '../context/ModelContext';
@@ -20,6 +11,8 @@ import {useSettings} from "../context/SettingsContext";
 import Markdown from "../components/Markdown";
 import ContextMenu from "react-native-context-menu-view";
 import Clipboard from '@react-native-clipboard/clipboard';
+import {useSafeAreaInsets} from "react-native-safe-area-context";
+import withKeyboardAvoidingView from "../components/withKeyboardAvoidingView";
 
 
 const ChatScreen = () => {
@@ -28,6 +21,7 @@ const ChatScreen = () => {
   const {chatId, mode} = route.params;
   const {generateResponse, isModelLoaded} = useModel();
   const {settings} = useSettings();
+  const insets = useSafeAreaInsets();
 
   const [chat, setChat] = useState<Chat | null>(null);
   const [inputText, setInputText] = useState('');
@@ -38,6 +32,7 @@ const ChatScreen = () => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const isAtBottomRef = useRef<boolean>(false);
   const [userPromptDialogVisible, setUserPromptDialogVisible] = useState(false);
+
   const scrollToBottom = useCallback(() => {
     flatListRef.current?.scrollToOffset({
       animated: true,
@@ -255,11 +250,7 @@ const ChatScreen = () => {
 
   // Render main interface
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
+    <View style={styles.container}>
       <View style={styles.chatContainer}>
         <FlatList
           ref={flatListRef}
@@ -289,21 +280,29 @@ const ChatScreen = () => {
         )}
       </View>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter message..."
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          right={
-            isGenerating ? (
-              <TextInput.Icon icon="stop" onPress={stopGeneration}/>
+      <View style={[styles.inputContainer, {paddingBottom: insets.bottom}]}>
+        <View style={styles.textInputWrapper}>
+          <TextInput
+            style={[styles.input]}
+            placeholder="Enter message..."
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            dense
+          />
+          <View style={styles.sendButtonContainer}>
+            {isGenerating ? (
+              <IconButton icon="stop" size={24} onPress={stopGeneration}/>
             ) : (
-              <TextInput.Icon icon="send" onPress={handleSend} disabled={!inputText.trim() || !isModelLoaded}/>
-            )
-          }
-        />
+              <IconButton
+                icon="send"
+                size={24}
+                onPress={handleSend}
+                disabled={!inputText.trim() || !isModelLoaded}
+              />
+            )}
+          </View>
+        </View>
       </View>
 
       {isGenerating && (
@@ -318,7 +317,7 @@ const ChatScreen = () => {
           <Dialog.Title>Edit Instruction</Dialog.Title>
           <Dialog.Content>
             <TextInput
-              value={userPrompt}
+              defaultValue={userPrompt}
               onChangeText={setUserPrompt}
               placeholder={'Enter user prompt'}
               mode="outlined"
@@ -336,7 +335,7 @@ const ChatScreen = () => {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -368,7 +367,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2.22,
   },
   inputContainer: {
-    padding: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
@@ -382,12 +382,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     marginBottom: 8,
-    maxWidth: '85%',
     elevation: 1,
   },
   userMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#e3f2fd',
+    maxWidth: '85%',
   },
   assistantMessage: {
     alignSelf: 'flex-start',
@@ -403,8 +403,20 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginTop: 4,
   },
+  textInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
   input: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: '#ffffff',
+  },
+  sendButtonContainer: {
+    alignSelf: 'flex-end', // 自身对齐到底部
+    marginBottom: 4, // 微调位置
+    marginRight: 4,
   },
   generatingContainer: {
     position: 'absolute',
@@ -424,4 +436,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ChatScreen;
+export default withKeyboardAvoidingView(ChatScreen);

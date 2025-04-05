@@ -15,9 +15,9 @@ import {ModelProvider} from './src/context/ModelContext';
 
 // Import navigation types
 import {RootStackParamList} from './src/types/navigation-types';
-import { SettingsProvider } from './src/context/SettingsContext';
+import {SettingsProvider} from './src/context/SettingsContext';
 import SettingsScreen from "./src/screens/SettingsScreen";
-import {Appearance, useColorScheme} from "react-native";
+import {Appearance} from "react-native";
 import setColorScheme = Appearance.setColorScheme;
 
 // Create navigator with the correct generic type

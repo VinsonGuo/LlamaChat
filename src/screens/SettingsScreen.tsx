@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View, Platform } from 'react-native';
 import { Button, Card, Divider, HelperText, TextInput, Text } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
 import { useSettings } from '../context/SettingsContext';
+import withKeyboardAvoidingView from "../components/withKeyboardAvoidingView";
 
 // Define interface for input values
 interface InputValues {
@@ -141,7 +142,7 @@ const SettingsScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} automaticallyAdjustKeyboardInsets={true}>
       <Card style={styles.section}>
         <Card.Title title="Model Parameter Settings" />
         <Card.Content>
@@ -380,4 +381,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SettingsScreen;
+export default withKeyboardAvoidingView(SettingsScreen);

@@ -8,6 +8,7 @@ import {Chat, ChatMode} from '../types/chat';
 import {HomeScreenNavigationProp} from "../types/navigation-types";
 import ChatListItem from "../components/ChatListItem";
 import ModelInfoPanel from "../components/ModelInfoPanel";
+import withKeyboardAvoidingView from "../components/withKeyboardAvoidingView";
 
 
 const HomeScreen = () => {
@@ -185,7 +186,7 @@ const HomeScreen = () => {
           <Dialog.Title>Edit Conversation Title</Dialog.Title>
           <Dialog.Content>
             <TextInput
-              value={editTitle}
+              defaultValue={editTitle}
               onChangeText={setEditTitle}
               mode="outlined"
             />
@@ -256,4 +257,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default withKeyboardAvoidingView(HomeScreen);
