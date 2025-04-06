@@ -99,7 +99,7 @@ const ChatListItem = ({ item, onOpenChat, onEditChat, onDeleteChat }: ChatListIt
   };
 
   const lastMessage = item.messages && item.messages.length > 0
-    ? item.messages[item.messages.length - 1]
+    ? item.messages[0]
     : null;
 
   const getPreviewText = () => {
